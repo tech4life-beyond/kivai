@@ -1,46 +1,82 @@
 # kivai_sdk/intent_parser.py
 import re
-import requests  # New: Used to call the mock device
+import uuid
+from datetime import datetime, timezone
+import requests  # used to call the mock device
 
-def send_to_device(command: dict):
-    url = "http://127.0.0.1:5000/intent"  # Your Flask mock_light server
-    response = requests.post(url, json=command)
+
+def send_to_device(intent_payload: dict):
+    # mock device server endpoint
+    url = "http://127.0.0.1:5000/intent"
+    response = requests.post(url, json=intent_payload)
     return response.json()
 
-def parse_input(raw_input: str, user_id="abc123", language="en", trigger="Kivai") -> tuple[dict, dict]:
-    raw_input = raw_input.lower()
 
-    command = None
-    object_ = None
-    location = None
-
-    if "turn on" in raw_input:
-        command = "turn on"
-    elif "turn off" in raw_input:
-        command = "turn off"
-
-    if "light" in raw_input or "lights" in raw_input:
-        object_ = "light"
-    elif "thermostat" in raw_input:
-        object_ = "thermostat"
-
+def _extract_zone(raw_input: str) -> str | None:
     match = re.search(r"in the (\w+ ?\w*)", raw_input)
     if match:
-        location = match.group(1)
+        return match.group(1).strip()
+    return None
 
-    confidence = 0.9 if command and object_ else 0.5
 
-    parsed_command = {
-        "command": command or "unknown",
-        "object": object_ or "unknown",
-        "location": location or "unknown",
-        "confidence": confidence,
-        "trigger": trigger,
-        "language": language,
-        "user_id": user_id
+def _infer_intent(raw_input: str) -> str:
+    text = raw_input.lower()
+
+    if "turn on" in text:
+        return "turn_on"
+    if "turn off" in text:
+        return "turn_off"
+    if "set temperature" in text or "set the temperature" in text:
+        return "set_temperature"
+    if "find" in text or "locate" in text:
+        return "locate"
+
+    return "unknown"
+
+
+def _infer_capability(raw_input: str) -> str:
+    text = raw_input.lower()
+
+    if "light" in text or "lights" in text:
+        return "light_control"
+    if "thermostat" in text or "temperature" in text:
+        return "thermostat_control"
+
+    return "generic"
+
+
+def parse_input(raw_input: str, user_id="abc123", language="en", trigger="Kivai") -> tuple[dict, dict]:
+    """
+    Parse raw text into a Kivai Intent v1 payload.
+
+    This is a minimal reference parser (not NLP).
+    In production, AI/Gateway generates this payload.
+    """
+    zone = _extract_zone(raw_input)
+    intent = _infer_intent(raw_input)
+    capability = _infer_capability(raw_input)
+
+    confidence = 0.9 if intent != "unknown" and capability != "generic" else 0.5
+
+    payload = {
+        "intent_id": str(uuid.uuid4()),
+        "intent": intent,
+        "target": {
+            # For v1 parser demo, we use capability+zone targeting.
+            # In production, device_id targeting is preferred when available.
+            "capability": capability,
+            "zone": zone or "unknown"
+        },
+        "meta": {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "language": language,
+            "confidence": confidence,
+            "source": "gateway",
+            "trigger": trigger,
+            "user_id": user_id
+        }
     }
 
-    # Send to device
-    response = send_to_device(parsed_command)
+    response = send_to_device(payload)
+    return payload, response
 
-    return parsed_command, response
