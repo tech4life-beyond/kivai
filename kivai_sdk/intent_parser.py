@@ -13,10 +13,20 @@ def send_to_device(intent_payload: dict):
 
 
 def _extract_zone(raw_input: str) -> str | None:
-    match = re.search(r"in the (\w+ ?\w*)", raw_input)
+    text = raw_input.lower()
+
+    # Pattern 1: "in the kitchen" / "in the living room"
+    match = re.search(r"in the (\w+(?: \w+)*)", text)
     if match:
         return match.group(1).strip()
+
+    # Pattern 2: "kitchen light" / "living room lights"
+    match = re.search(r"(\w+(?: \w+)*)\s+(?:light|lights|thermostat)\b", text)
+    if match:
+        return match.group(1).strip()
+
     return None
+
 
 
 def _infer_intent(raw_input: str) -> str:
