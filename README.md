@@ -88,3 +88,12 @@ Florida, United States
 
 Part of the Tech4Life Operating System ecosystem.
 
+---
+
+## Official TOIL Product Pack
+
+The canonical TOIL Product Pack for the Kivai Platform (registration, ethics framework, and licensing readiness) is maintained in the Tech4Life products repository:
+
+https://github.com/tech4life-beyond/products/tree/main/kivai
+
+This repository contains the technical implementation layer of the Kivai Platform.
