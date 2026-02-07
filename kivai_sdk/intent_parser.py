@@ -16,16 +16,19 @@ def _extract_zone(raw_input: str) -> str | None:
     text = raw_input.lower()
 
     # Pattern 1: "in the kitchen" / "in the living room"
-    match = re.search(r"in the (\w+(?: \w+)*)", text)
+    match = re.search(r"\bin the\s+([a-z]+(?:\s[a-z]+)?)\b", text)
     if match:
         return match.group(1).strip()
 
-    # Pattern 2: "kitchen light" / "living room lights"
-    match = re.search(r"(\w+(?: \w+)*)\s+(?:light|lights|thermostat)\b", text)
+    # Pattern 2 (strict): capture the 1–2 words immediately before the device noun
+    # e.g. "the kitchen light" -> "kitchen"
+    #      "living room lights" -> "living room"
+    match = re.search(r"\b(?:the\s+)?([a-z]+(?:\s[a-z]+)?)\s+(?:light|lights|thermostat)\b", text)
     if match:
         return match.group(1).strip()
 
     return None
+
 
 
 
