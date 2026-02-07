@@ -9,65 +9,179 @@ Developed and maintained by **Tech4Life & Beyond LLC**, Kivai provides a determi
 
 ---
 
-## Why Kivai Exists
+# Why Kivai Exists
 
 Artificial Intelligence can understand natural language.
 
-However, devices and ecosystems still require a reliable, structured, and interoperable contract to:
+However, devices and ecosystems still require a reliable, structured, and interoperable execution contract to:
 
-- Validate intents safely and deterministically
-- Route commands across different devices and brands
-- Share context between multiple devices
-- Enforce authentication and trust layers
-- Avoid ecosystem lock-in
+- Validate intents safely and deterministically  
+- Route commands across different devices and brands  
+- Share context between multiple devices  
+- Enforce authentication and trust layers  
+- Avoid ecosystem lock-in  
 
-Kivai provides that contract.
-
-AI interprets language.
+AI interprets language.  
 Kivai standardizes execution.
 
 ---
 
-## Platform Scope
+# Platform Architecture (v1.0)
 
-This repository contains:
+Kivai v1.0 assumes a **Gateway-Orchestrated Model** by default.
 
-- `docs/` — protocol documentation and context-sharing notes
-- `kivai_sdk/` — reference SDK utilities
-- `mock-devices/` — mock device servers for local testing
-- `tests/` — automated tests
-- `transcription/` — transcription utilities (experimental)
+## Execution Flow
+
+1. User speaks to an AI assistant.
+2. AI generates a structured Kivai intent.
+3. A trusted Gateway/Hub validates, authenticates, and routes the intent.
+4. Target device (or adapter) executes the command.
+5. Device responds with lifecycle status (`acknowledged` / `success` / `failed`).
+
+Mesh networking between devices is optional and not required in v1.0.
 
 ---
 
-## Example Intent Payload
+# Canonical Intent Schema (v1.0)
+
+The official schema is located at:
+
+```
+schema/kivai-intent-v1.schema.json
+```
+
+This schema defines the universal Kivai intent contract.
+
+## Canonical Example (v1.0)
 
 ```json
 {
-  "command": "turn on",
-  "object": "light",
-  "location": "kitchen",
-  "confidence": 0.97,
-  "trigger": "Kivai",
-  "language": "en",
-  "user_id": "abc123"
+  "intent_id": "c9c4c8d1-2d6f-4d6c-9a2f-1f2c3a4b5c6d",
+  "intent": "turn_on",
+  "target": {
+    "capability": "light_control",
+    "zone": "kitchen"
+  },
+  "params": {
+    "level": 100
+  },
+  "meta": {
+    "timestamp": "2026-02-06T21:10:00Z",
+    "language": "en",
+    "confidence": 0.97,
+    "source": "gateway",
+    "trigger": "Kivai"
+  }
 }
 ```
 
 ---
 
-## Development Status
+# Targeting Model
 
-Current phase:
+Kivai supports two routing strategies:
 
-- Protocol v0.x definition
-- Reference SDK stabilization
-- Mock device test environment
-- Security and trust guidelines drafting
+## 1. Direct Device Targeting (Preferred)
+
+```json
+"target": {
+  "device_id": "door-patio-01"
+}
+```
+
+## 2. Capability + Zone Targeting (Fallback)
+
+```json
+"target": {
+  "capability": "lock_control",
+  "zone": "patio"
+}
+```
+
+At least one of the following MUST be present:
+
+- `device_id`
+- OR (`capability` + `zone`)
 
 ---
 
-## Licensing
+# Security Baseline
+
+Sensitive intents (locks, payments, alarms, surveillance, safety actuators) require an `auth` object.
+
+```json
+"auth": {
+  "required_role": "owner",
+  "token": "signed-session-token"
+}
+```
+
+Devices MUST reject sensitive intents if:
+
+- `auth` is missing  
+- Token is invalid or expired  
+- Role is insufficient  
+
+---
+
+# Response Lifecycle
+
+Devices MUST respond with:
+
+- `intent_id`
+- `status` (`acknowledged` | `success` | `failed`)
+- `device_id`
+- `timestamp`
+
+On failure:
+
+```json
+{
+  "intent_id": "c9c4c8d1-2d6f-4d6c-9a2f-1f2c3a4b5c6d",
+  "status": "failed",
+  "device_id": "door-patio-01",
+  "timestamp": "2026-02-06T21:10:01Z",
+  "error": {
+    "code": "AUTH_REQUIRED",
+    "message": "Owner authentication required"
+  }
+}
+```
+
+---
+
+# Repository Structure
+
+- `schema/` — canonical intent schema (v1.0)
+- `schema/legacy/` — archived pre-v1 drafts (historical reference only)
+- `docs/` — protocol documentation and architectural notes
+- `kivai_sdk/` — reference SDK utilities
+- `mock-devices/` — local mock device servers for testing
+- `tests/` — automated test suite
+- `transcription/` — experimental transcription utilities
+
+---
+
+# Development Status
+
+## Current Phase
+
+- v1.0 Intent Specification Formalized
+- Canonical JSON Schema Defined
+- Reference SDK under migration
+- Gateway-Orchestrated Model defined
+- Security baseline established
+
+## Next Phase
+
+- SDK alignment to v1.0 schema
+- Device adapter reference implementation
+- Auth validation layer prototype
+- Gateway reference design
+
+---
+
+# Licensing
 
 This project is licensed under the **Tech4Life Open Impact License (TOIL) v1.0**.
 
@@ -79,21 +193,24 @@ Unauthorized commercial use is prohibited.
 
 ---
 
-## Organization
+# Organization
 
 Maintained by:
 
 **Tech4Life & Beyond LLC**  
-Florida, United States
+Florida, United States  
 
 Part of the Tech4Life Operating System ecosystem.
 
 ---
 
-## Official TOIL Product Pack
+# Official TOIL Product Pack
 
-The canonical TOIL Product Pack for the Kivai Platform (registration, ethics framework, and licensing readiness) is maintained in the Tech4Life products repository:
+The canonical TOIL Product Pack for the Kivai Platform  
+(registration, ethics framework, and licensing readiness)  
+is maintained in the Tech4Life products repository:
 
 https://github.com/tech4life-beyond/products/tree/main/kivai
 
 This repository contains the technical implementation layer of the Kivai Platform.
+
