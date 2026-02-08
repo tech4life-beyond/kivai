@@ -4,7 +4,8 @@ setup(
     name="kivai_sdk",
     version="0.1.3",
     description="SDK for validating Kivai protocol commands",
-    author="OpenKivai Community",
+    author="Tech4Life & Beyond LLC",
+    license="Tech4Life Open Impact License (TOIL) v1.0",
     packages=find_packages(),
     package_data={
         'kivai_sdk': ['schema/kivai-command.schema.json'],
@@ -13,7 +14,6 @@ setup(
     keywords=["kivai", "validator", "jsonschema", "iot", "commands"],
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License"
+        "License :: Other/Proprietary License"
     ],
 )
-
