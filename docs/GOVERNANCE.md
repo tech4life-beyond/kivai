@@ -2,7 +2,7 @@
 
 ## Maintainers
 
-The Kivai Protocol is currently maintained by [@ArielMartin-Tech4Life](https://github.com/ArielMartin-Tech4Life).
+The Kivai Platform is currently maintained by [@ArielMartin-Tech4Life](https://github.com/ArielMartin-Tech4Life).
 
 Want to help?  
 We’re looking for contributors — [join us!](mailto:tech4lifeandbeyond@gmail.com)
@@ -20,7 +20,7 @@ Decisions are made by:
 
 ## Contributions
 
-Contributors help shape the future of the protocol. You can:
+Contributors help shape the future of the platform. You can:
 
 - Propose changes to the spec
 - Suggest or improve schemas

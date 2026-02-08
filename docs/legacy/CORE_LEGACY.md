@@ -1,5 +1,7 @@
 # kivai-core
 
+> Legacy terminology note: this document uses "Kivai Protocol" as historical language for what is now the Kivai Platform.
+
 The core logic, libraries, and reference implementation of the **Kivai Protocol** — an open, universal way to communicate with intelligent devices in natural language.
 
 ---

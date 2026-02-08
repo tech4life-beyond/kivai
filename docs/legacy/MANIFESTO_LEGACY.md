@@ -1,5 +1,7 @@
 # Kivai Manifesto
 
+> Legacy terminology note: references to "protocol" in this document predate the Kivai Platform naming.
+
 The open-source vision for Kivai — a universal language for communicating with intelligent devices.
 
 🌍 **What is Kivai?**
