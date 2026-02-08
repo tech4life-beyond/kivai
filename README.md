@@ -212,5 +212,6 @@ is maintained in the Tech4Life products repository:
 
 https://github.com/tech4life-beyond/products/tree/main/kivai
 
-This repository contains the technical implementation layer of the Kivai Platform.
+Product ID: T4L-TOIL-002-KIVAI
 
+This repository contains the technical implementation layer of the Kivai Platform.
