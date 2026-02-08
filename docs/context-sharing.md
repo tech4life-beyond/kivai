@@ -1,6 +1,6 @@
 # Kivai Context Sharing
 
-Kivai supports smart context sharing between devices to create seamless, multi-device interactions.
+Kivai supports smart context sharing between devices to create seamless, multi-device interactions on the Kivai Platform.
 
 ---
 
@@ -10,7 +10,7 @@ Kivai supports smart context sharing between devices to create seamless, multi-d
 
 - Location (`kitchen`, `living room`)
 - Time (`now`, `later`, `at 6pm`)
-- Active intent (e.g. `"command": "turn off"`)
+- Active intent context (e.g. `intent` + `target` + `meta`)
 - User identity and preferences
 - Device capabilities
 
@@ -33,9 +33,16 @@ Context is shared as a JSON object like this:
 ```json
 {
   "intent": {
-    "command": "turn off",
-    "object": "light",
-    "location": "bedroom"
+    "intent": "turn_off",
+    "target": {
+      "capability": "light_control",
+      "zone": "bedroom"
+    },
+    "meta": {
+      "timestamp": "2025-04-17T17:20:00Z",
+      "language": "en",
+      "source": "gateway"
+    }
   },
   "user": {
     "id": "abc123",
@@ -72,3 +79,9 @@ Context is shared as a JSON object like this:
 
 Let’s build an ecosystem where devices cooperate — not compete.  
 Context is the bridge to intelligence.
+
+---
+
+## Compatibility / Legacy Notes
+
+Legacy (pre-v1.0) context-sharing examples used `command`, `object`, and `location`. v1.0 context exchanges should mirror the Intent API fields (`intent`, `target`, `meta`).

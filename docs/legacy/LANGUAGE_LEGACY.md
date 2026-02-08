@@ -1,6 +1,8 @@
 # kivai-language
 The official grammar and syntax of the Kivai language for intelligent device interaction.
 
+> Legacy terminology note: references to "protocol" or legacy command formats in this document predate the Kivai Platform naming and v1.0 intent schema.
+
 # Kivai Language Reference
 
 Kivai is a simple, universal, human-readable language designed for communicating with intelligent devices — naturally and efficiently.

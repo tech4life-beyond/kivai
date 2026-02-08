@@ -1,4 +1,4 @@
-# Kivai Protocol Roadmap
+# Kivai Platform Roadmap
 
 ## Phase 1: Initial Setup
 - Set up mock device handlers (mock-thermostat, mock-light, etc.)
@@ -9,7 +9,7 @@
 - Label issues with **good first issue** for easier onboarding
 - Add documentation for project setup and usage
 - Promote the project for visibility and attract initial contributors
-- Provide a simple demo or CLI script to show how Kivai Protocol works
+- Provide a simple demo or CLI script to show how the Kivai Platform works
 
 ## Phase 3: Developer Experience
 - Create SDKs for Kivai commands (Python/JS)
@@ -19,6 +19,6 @@
 
 ## Phase 4: Community Building
 - Engage with contributors, maintainers, and developers
-- Add more mock devices and use cases to expand the protocol
+- Add more mock devices and use cases to expand the platform
 - Encourage collaboration on new features and improvements
 - Establish a community-driven roadmap with ongoing feedback and contributions

@@ -38,9 +38,9 @@ Kivai v1.0 assumes a **Gateway/Hub** (phone, home hub, router, edge device) as t
 - Standard request/response patterns
 - Standardized status lifecycle:
   - acknowledged
-  - executing
   - success
   - failed (with reason codes)
+  - (Internal implementations may track intermediate states like "executing," but these are not part of the public v1.0 status contract.)
 
 ### 3.3 Gateway/Hub Orchestration Model (Default)
 - Gateway receives user request (voice/text)
@@ -94,7 +94,7 @@ Gateway produces:
 - auth proof required (owner role)
 
 Device returns:
-- acknowledged → executing → success/failed
+- acknowledged → success/failed
 
 ---
 
