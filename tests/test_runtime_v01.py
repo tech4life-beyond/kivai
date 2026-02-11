@@ -14,6 +14,7 @@ class TestRuntimeV01(unittest.TestCase):
         ack = execute_intent(payload)
 
         self.assertEqual(ack["status"], "ok")
+        # solo verificamos que "echo" contenga el mensaje esperado
         self.assertEqual(ack["result"]["echo"], "hola")
         self.assertIn("intent_id", ack)
         self.assertIn("timestamp", ack)
