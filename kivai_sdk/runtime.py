@@ -57,24 +57,37 @@ def _success_ack(base: dict, result: dict) -> dict:
 def execute_intent(payload: dict) -> dict:
     """
     v0.2 execution pipeline:
-      1) Validate schema (non-demo intents)
-      2) Enforce auth stub (if required)
-      3) Route by adapter registry
-      4) Return ACK envelope
+      1) ACK envelope
+      2) Auth stub (when required)
+      3) Adapter execution (demo intents allowed)
+      4) Canonical schema validation for non-demo intents
     """
     ack = _make_ack_base(payload)
+    intent = payload.get("intent")
 
-    # Validate schema
+    # v0.2: allow a small "developer demo" intent outside the canonical schema
+    # so the project remains runnable without changing the schema.
+    if intent == "echo":
+        if _auth_required(payload) and not _has_auth_proof(payload):
+            return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
+
+        registry = default_registry()
+        adapter = registry.resolve("echo")
+        if adapter is None:
+            return _error_ack(ack, "INTENT_UNSUPPORTED", "Echo adapter not registered")
+
+        ctx = AdapterContext()
+        result = adapter.execute(payload, ctx)
+        return _success_ack(ack, result)
+
+    # For all non-demo intents, enforce canonical schema validation first.
     ok, message = validate_command(payload)
     if not ok:
         return _error_ack(ack, "SCHEMA_INVALID", message)
 
-    # Enforce auth if required
     if _auth_required(payload) and not _has_auth_proof(payload):
         return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
 
-    # v0.2: execute via adapter registry
-    intent = payload.get("intent")
     registry = default_registry()
     adapter = registry.resolve(intent)
 
