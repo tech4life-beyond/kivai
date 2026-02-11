@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 
 from kivai_sdk.validator import validate_command
+from kivai_sdk.runtime import execute_intent, pretty_json
+
 
 
 def _cmd_validate(args: argparse.Namespace) -> int:
@@ -25,10 +27,18 @@ def _cmd_validate(args: argparse.Namespace) -> int:
 
 
 def _cmd_run_echo(args: argparse.Namespace) -> int:
-    # Simple local demo (ack/status envelope added in commit 3)
-    message = args.message
-    print(message)
-    return 0
+    # v0.1: build a minimal intent payload and execute through runtime pipeline
+    payload = {
+        "intent": "echo",
+        "message": args.message,
+        # future: device_id, routing, context, etc.
+        "auth": {"required": False},
+        "confidence": 1.0,
+    }
+    ack = execute_intent(payload)
+    print(pretty_json(ack))
+    return 0 if ack.get("status") == "ok" else 1
+
 
 
 def _cmd_serve(args: argparse.Namespace) -> int:
