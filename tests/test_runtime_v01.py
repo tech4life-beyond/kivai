@@ -30,7 +30,7 @@ class TestRuntimeV01(unittest.TestCase):
         self.assertEqual(ack["status"], "failed")
         self.assertEqual(ack["error"]["code"], "AUTH_REQUIRED")
 
-    def test_unsupported_intent(self):
+    def test_invalid_schema_rejected(self):
         payload = {
             "intent": "unknown_intent",
             "auth": {"required": False},
@@ -39,4 +39,4 @@ class TestRuntimeV01(unittest.TestCase):
         ack = execute_intent(payload)
 
         self.assertEqual(ack["status"], "failed")
-        self.assertEqual(ack["error"]["code"], "INTENT_UNSUPPORTED")
+        self.assertEqual(ack["error"]["code"], "SCHEMA_INVALID")

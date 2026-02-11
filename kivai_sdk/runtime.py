@@ -56,13 +56,24 @@ def _success_ack(base: dict, result: dict) -> dict:
 def execute_intent(payload: dict) -> dict:
     """
     v0.1 execution pipeline:
-      1) Validate schema
+      1) Validate schema (non-demo intents)
       2) Enforce auth stub (if required)
       3) Route by intent (adapter)
       4) Return ACK envelope
     """
     ack = _make_ack_base(payload)
 
+    intent = payload.get("intent")
+
+    # v0.1: allow a small "developer demo" intent that is intentionally outside
+    # the canonical schema. This keeps the schema stable while enabling a runnable loop.
+    if intent == "echo":
+        if _auth_required(payload) and not _has_auth_proof(payload):
+            return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
+        msg = payload.get("message", "")
+        return _success_ack(ack, {"echo": msg})
+
+    # For all non-demo intents, enforce canonical schema validation.
     ok, message = validate_command(payload)
     if not ok:
         return _error_ack(ack, "SCHEMA_INVALID", message)
@@ -70,12 +81,7 @@ def execute_intent(payload: dict) -> dict:
     if _auth_required(payload) and not _has_auth_proof(payload):
         return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
 
-    intent = payload.get("intent")
-    if intent == "echo":
-        msg = payload.get("message", "")
-        return _success_ack(ack, {"echo": msg})
-
-    # v0.1: only echo is runnable. Everything else is explicitly unsupported.
+    # v0.1: non-demo intents are not executed yet (adapter layer comes next).
     return _error_ack(ack, "INTENT_UNSUPPORTED", f"Unsupported intent: {intent}")
 
 
