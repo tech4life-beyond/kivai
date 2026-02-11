@@ -4,7 +4,6 @@ from kivai_sdk.intent_parser import parse_input
 
 
 class TestIntentParser(unittest.TestCase):
-
     @patch("kivai_sdk.intent_parser.requests.post")
     def test_parse_turn_off_lights(self, mock_post):
         mock_post.return_value.status_code = 200
@@ -25,4 +24,3 @@ class TestIntentParser(unittest.TestCase):
         payload, status = parse_input(input_text)
 
         self.assertEqual(payload["intent"], "unknown")
-

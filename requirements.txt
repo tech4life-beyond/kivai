@@ -1,7 +1,9 @@
-requests
+requests>=2.31
 flask
 scikit-learn
 pandas
 numpy
 setuptools
 jsonschema
+fastapi>=0.110
+uvicorn>=0.27

@@ -8,15 +8,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from kivai_sdk.validator import validate_command
 
 SCHEMA_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "schema",
-    "kivai-intent-v1.schema.json"
+    os.path.dirname(__file__), "..", "schema", "kivai-intent-v1.schema.json"
 )
 
 
 class TestValidator(unittest.TestCase):
-
     def test_valid_intent_v1(self):
         payload = {
             "intent_id": "c9c4c8d1-2d6f-4d6c-9a2f-1f2c3a4b5c6d",
@@ -27,8 +23,8 @@ class TestValidator(unittest.TestCase):
                 "language": "en",
                 "confidence": 0.98,
                 "source": "gateway",
-                "trigger": "Kivai"
-            }
+                "trigger": "Kivai",
+            },
         }
 
         valid, message = validate_command(payload, schema_path=SCHEMA_PATH)
@@ -48,6 +44,3 @@ class TestValidator(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-

@@ -41,5 +41,3 @@ def validate_command(payload: dict, schema_path: str | None = None) -> tuple[boo
         return False, "❌ Validation failed: schema file not found"
     except ValidationError as e:
         return False, f"❌ Validation failed: {e.message}"
-
-

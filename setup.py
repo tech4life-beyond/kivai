@@ -8,12 +8,17 @@ setup(
     license="Tech4Life Open Impact License (TOIL) v1.0",
     packages=find_packages(),
     package_data={
-        'kivai_sdk': ['schema/kivai-command.schema.json'],
+        "kivai_sdk": ["schema/kivai-command.schema.json"],
     },
     install_requires=["jsonschema"],
+    entry_points={
+        "console_scripts": [
+            "kivai=kivai_sdk.cli:main",
+        ],
+    },
     keywords=["kivai", "validator", "jsonschema", "iot", "commands"],
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: Other/Proprietary License"
+        "License :: Other/Proprietary License",
     ],
 )
