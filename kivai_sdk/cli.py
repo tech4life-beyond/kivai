@@ -1,4 +1,3 @@
-
 import argparse
 import json
 import sys
@@ -6,7 +5,6 @@ from pathlib import Path
 
 from kivai_sdk.validator import validate_command
 from kivai_sdk.runtime import execute_intent, pretty_json
-
 
 
 def _cmd_validate(args: argparse.Namespace) -> int:
@@ -40,13 +38,15 @@ def _cmd_run_echo(args: argparse.Namespace) -> int:
     return 0 if ack.get("status") == "ok" else 1
 
 
-
 def _cmd_serve(args: argparse.Namespace) -> int:
     # Gateway HTTP (FastAPI). Import inside command to avoid import cost when not used.
     try:
         import uvicorn  # type: ignore
     except Exception:
-        print("❌ Missing dependency: uvicorn. Install dependencies and try again.", file=sys.stderr)
+        print(
+            "❌ Missing dependency: uvicorn. Install dependencies and try again.",
+            file=sys.stderr,
+        )
         return 2
 
     try:
@@ -66,7 +66,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_validate = sub.add_parser("validate", help="Validate a JSON payload against the canonical Kivai schema")
+    p_validate = sub.add_parser(
+        "validate", help="Validate a JSON payload against the canonical Kivai schema"
+    )
     p_validate.add_argument("payload", help="Path to JSON file")
     p_validate.set_defaults(func=_cmd_validate)
 
@@ -78,8 +80,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_echo.set_defaults(func=_cmd_run_echo)
 
     p_serve = sub.add_parser("serve", help="Run the local Kivai gateway (HTTP)")
-    p_serve.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")
-    p_serve.add_argument("--port", type=int, default=8080, help="Bind port (default: 8080)")
+    p_serve.add_argument(
+        "--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)"
+    )
+    p_serve.add_argument(
+        "--port", type=int, default=8080, help="Bind port (default: 8080)"
+    )
     p_serve.set_defaults(func=_cmd_serve)
 
     return parser

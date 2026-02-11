@@ -4,7 +4,6 @@ from kivai_sdk.runtime import execute_intent
 
 
 class TestRuntimeV01(unittest.TestCase):
-
     def test_echo_success(self):
         payload = {
             "intent": "echo",

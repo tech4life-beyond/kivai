@@ -22,4 +22,3 @@ setup(
         "License :: Other/Proprietary License",
     ],
 )
-

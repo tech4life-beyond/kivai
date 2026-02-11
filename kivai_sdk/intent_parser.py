@@ -23,13 +23,13 @@ def _extract_zone(raw_input: str) -> str | None:
     # Pattern 2 (strict): capture the 1–2 words immediately before the device noun
     # e.g. "the kitchen light" -> "kitchen"
     #      "living room lights" -> "living room"
-    match = re.search(r"\b(?:the\s+)?([a-z]+(?:\s[a-z]+)?)\s+(?:light|lights|thermostat)\b", text)
+    match = re.search(
+        r"\b(?:the\s+)?([a-z]+(?:\s[a-z]+)?)\s+(?:light|lights|thermostat)\b", text
+    )
     if match:
         return match.group(1).strip()
 
     return None
-
-
 
 
 def _infer_intent(raw_input: str) -> str:
@@ -58,7 +58,9 @@ def _infer_capability(raw_input: str) -> str:
     return "generic"
 
 
-def parse_input(raw_input: str, user_id="abc123", language="en", trigger="Kivai") -> tuple[dict, dict]:
+def parse_input(
+    raw_input: str, user_id="abc123", language="en", trigger="Kivai"
+) -> tuple[dict, dict]:
     """
     Parse raw text into a Kivai Intent v1 payload.
 
@@ -78,7 +80,7 @@ def parse_input(raw_input: str, user_id="abc123", language="en", trigger="Kivai"
             # For v1 parser demo, we use capability+zone targeting.
             # In production, device_id targeting is preferred when available.
             "capability": capability,
-            "zone": zone or "unknown"
+            "zone": zone or "unknown",
         },
         "meta": {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -86,10 +88,9 @@ def parse_input(raw_input: str, user_id="abc123", language="en", trigger="Kivai"
             "confidence": confidence,
             "source": "gateway",
             "trigger": trigger,
-            "user_id": user_id
-        }
+            "user_id": user_id,
+        },
     }
 
     response = send_to_device(payload)
     return payload, response
-

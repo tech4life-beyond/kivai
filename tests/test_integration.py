@@ -4,7 +4,6 @@ from kivai_sdk.intent_parser import parse_input
 
 
 class TestIntegration(unittest.TestCase):
-
     @patch("kivai_sdk.intent_parser.requests.post")
     def test_integration_pipeline(self, mock_post):
         mock_post.return_value.status_code = 200
@@ -16,5 +15,3 @@ class TestIntegration(unittest.TestCase):
         self.assertIsInstance(payload, dict)
         self.assertEqual(payload["intent"], "turn_off")
         self.assertEqual(payload["target"]["zone"], "living room")
-
-

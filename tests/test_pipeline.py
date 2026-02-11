@@ -4,7 +4,6 @@ from kivai_sdk.intent_parser import parse_input
 
 
 class TestIntentPipeline(unittest.TestCase):
-
     @patch("kivai_sdk.intent_parser.requests.post")
     def test_turn_on_light(self, mock_post):
         mock_post.return_value.status_code = 200
@@ -16,5 +15,3 @@ class TestIntentPipeline(unittest.TestCase):
         self.assertEqual(payload["intent"], "turn_on")
         self.assertEqual(payload["target"]["capability"], "light_control")
         self.assertEqual(payload["target"]["zone"], "kitchen")
-
-

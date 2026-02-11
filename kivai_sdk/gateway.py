@@ -23,6 +23,7 @@ def validate_intent(payload: dict):
         raise HTTPException(status_code=400, detail=message)
     return {"ok": True, "message": message}
 
+
 @app.post("/v1/execute")
 def execute(payload: dict):
     ack = execute_intent(payload)
