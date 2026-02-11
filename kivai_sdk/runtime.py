@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from kivai_sdk.validator import validate_command
+from kivai_sdk.adapters import AdapterContext, default_registry
 
 
 def _utc_now_iso() -> str:
@@ -55,25 +56,31 @@ def _success_ack(base: dict, result: dict) -> dict:
 
 def execute_intent(payload: dict) -> dict:
     """
-    v0.1 execution pipeline:
-      1) Validate schema (non-demo intents)
-      2) Enforce auth stub (if required)
-      3) Route by intent (adapter)
-      4) Return ACK envelope
+    v0.2 execution pipeline:
+      1) ACK envelope
+      2) Auth stub (when required)
+      3) Adapter execution (demo intents allowed)
+      4) Canonical schema validation for non-demo intents
     """
     ack = _make_ack_base(payload)
-
     intent = payload.get("intent")
 
-    # v0.1: allow a small "developer demo" intent that is intentionally outside
-    # the canonical schema. This keeps the schema stable while enabling a runnable loop.
+    # v0.2: allow a small "developer demo" intent outside the canonical schema
+    # so the project remains runnable without changing the schema.
     if intent == "echo":
         if _auth_required(payload) and not _has_auth_proof(payload):
             return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
-        msg = payload.get("message", "")
-        return _success_ack(ack, {"echo": msg})
 
-    # For all non-demo intents, enforce canonical schema validation.
+        registry = default_registry()
+        adapter = registry.resolve("echo")
+        if adapter is None:
+            return _error_ack(ack, "INTENT_UNSUPPORTED", "Echo adapter not registered")
+
+        ctx = AdapterContext()
+        result = adapter.execute(payload, ctx)
+        return _success_ack(ack, result)
+
+    # For all non-demo intents, enforce canonical schema validation first.
     ok, message = validate_command(payload)
     if not ok:
         return _error_ack(ack, "SCHEMA_INVALID", message)
@@ -81,8 +88,15 @@ def execute_intent(payload: dict) -> dict:
     if _auth_required(payload) and not _has_auth_proof(payload):
         return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
 
-    # v0.1: non-demo intents are not executed yet (adapter layer comes next).
-    return _error_ack(ack, "INTENT_UNSUPPORTED", f"Unsupported intent: {intent}")
+    registry = default_registry()
+    adapter = registry.resolve(intent)
+
+    if adapter is None:
+        return _error_ack(ack, "INTENT_UNSUPPORTED", f"Unsupported intent: {intent}")
+
+    ctx = AdapterContext()
+    result = adapter.execute(payload, ctx)
+    return _success_ack(ack, result)
 
 
 def pretty_json(data: Any) -> str:
