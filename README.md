@@ -181,6 +181,21 @@ On failure:
 
 ---
 
+## v0.2 Adapter Interface (How to extend execution)
+
+Kivai executes intents through adapters.
+
+- Adapter contract: `kivai_sdk/adapters/base.py`
+- Registry: `kivai_sdk/adapters/registry.py`
+
+To add a new intent:
+1) Implement an adapter with `intent = "<intent_name>"` and `execute(payload, ctx)`.
+2) Register it in `default_registry()`.
+
+The runtime returns a stable ACK envelope and places adapter output under `result`.
+
+---
+
 # Licensing
 
 This project is licensed under the **Tech4Life Open Impact License (TOIL) v1.0**.
