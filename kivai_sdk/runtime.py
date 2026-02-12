@@ -7,6 +7,7 @@ from kivai_sdk.adapters import AdapterContext, default_registry
 from kivai_sdk.router import route_target
 from kivai_sdk.validator import validate_command
 from kivai_sdk.security import evaluate_authorization
+from kivai_sdk.config import DEFAULT_EXECUTION_CONFIG, ExecutionConfig
 
 
 def _utc_now_iso() -> str:
@@ -111,14 +112,19 @@ def _ensure_params(payload: dict) -> None:
         payload["params"] = {}
 
 
-def execute_intent(payload: dict) -> dict:
+def execute_intent(
+    payload: dict,
+    config: ExecutionConfig = DEFAULT_EXECUTION_CONFIG,
+) -> dict:
     """
     v0.6 execution pipeline (policy-driven, schema-aligned)
     """
-    _ensure_intent_id(payload)
-    _ensure_meta(payload)
-    _ensure_target(payload)
-    _ensure_params(payload)
+    # Normalization conditional según config.strict
+    if not config.strict:
+        _ensure_intent_id(payload)
+        _ensure_meta(payload)
+        _ensure_target(payload)
+        _ensure_params(payload)
 
     ack = _make_ack_base(payload)
     intent = payload.get("intent")
