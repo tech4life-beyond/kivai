@@ -80,20 +80,43 @@ def execute_intent(payload: dict) -> dict:
     ack = _make_ack_base(payload)
     intent = payload.get("intent")
 
-    # Demo intent: echo (allowed outside canonical schema for runnable v0.x)
-    if intent == "echo":
+    # v0.4 security baseline: unlock_door requires auth by default
+    if intent == "unlock_door":
+        auth = payload.get("auth")
+        if not isinstance(auth, dict):
+            payload["auth"] = {"required": True}
+        else:
+            auth.setdefault("required", True)
+
+    # v0.4 builtin intents are allowed outside the canonical schema so the platform
+    # remains runnable while schema v1 is stabilized/reviewed.
+    builtin_intents = {"echo", "set_temperature", "play_music", "unlock_door"}
+
+    if intent in builtin_intents:
         if _auth_required(payload) and not _has_auth_proof(payload):
             return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
 
         _apply_route_if_available(ack, payload)
 
         registry = default_registry()
-        adapter = registry.resolve("echo")
+        adapter = registry.resolve(intent)
         if adapter is None:
-            return _error_ack(ack, "INTENT_UNSUPPORTED", "Echo adapter not registered")
+            return _error_ack(
+                ack,
+                "INTENT_UNSUPPORTED",
+                f"Adapter not registered for intent: {intent}",
+            )
 
         ctx = AdapterContext()
         result = adapter.execute(payload, ctx)
+
+        # Normalize adapter result into ACK success/failure (v0.4 contract)
+        if isinstance(result, dict) and result.get("ok") is False:
+            err = result.get("error") if isinstance(result.get("error"), dict) else {}
+            code = err.get("code") or "ADAPTER_ERROR"
+            msg = err.get("message") or "Adapter execution failed"
+            return _error_ack(ack, str(code), str(msg))
+
         return _success_ack(ack, result)
 
     # Non-demo intents: enforce canonical schema validation first
@@ -114,6 +137,14 @@ def execute_intent(payload: dict) -> dict:
 
     ctx = AdapterContext()
     result = adapter.execute(payload, ctx)
+
+    # Normalize adapter result into ACK success/failure (v0.4 contract)
+    if isinstance(result, dict) and result.get("ok") is False:
+        err = result.get("error") if isinstance(result.get("error"), dict) else {}
+        code = err.get("code") or "ADAPTER_ERROR"
+        msg = err.get("message") or "Adapter execution failed"
+        return _error_ack(ack, str(code), str(msg))
+
     return _success_ack(ack, result)
 
 

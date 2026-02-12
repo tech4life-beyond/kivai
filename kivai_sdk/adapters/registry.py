@@ -4,6 +4,11 @@ from dataclasses import dataclass
 from typing import Dict, Iterable
 
 from .base import AdapterContext, AdapterResult, KivaiAdapter
+from kivai_sdk.adapters.builtin import (
+    PlayMusicAdapter,
+    SetTemperatureAdapter,
+    UnlockDoorAdapter,
+)
 
 
 @dataclass
@@ -47,4 +52,8 @@ class EchoAdapter:
 def default_registry() -> AdapterRegistry:
     reg = AdapterRegistry.empty()
     reg.register(EchoAdapter())
+    reg.register(SetTemperatureAdapter())
+    reg.register(PlayMusicAdapter())
+    reg.register(UnlockDoorAdapter())
+
     return reg

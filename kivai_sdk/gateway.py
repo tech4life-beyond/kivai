@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 
 from kivai_sdk.validator import validate_command
 from kivai_sdk.runtime import execute_intent
+from fastapi import Response
 
 
 app = FastAPI(
@@ -25,9 +26,10 @@ def validate_intent(payload: dict):
 
 
 @app.post("/v1/execute")
-def execute(payload: dict):
+def execute(payload: dict, response: Response):
     ack = execute_intent(payload)
-    # If failed, return 400 but include ACK body (auditable)
+    # Always return ACK in the response body for stable client parsing.
+    # Use HTTP status code as a secondary signal only.
     if ack.get("status") != "ok":
-        raise HTTPException(status_code=400, detail=ack)
+        response.status_code = 400
     return ack
