@@ -38,8 +38,11 @@ def _auth_required(payload: dict) -> bool:
     """
     Schema-aligned auth:
       auth = { required_role, token }
-    If auth object is present, we treat it as required.
+    If auth exists, it's required.
+    Additionally, some intents (e.g., unlock_door) may require auth by baseline.
     """
+    if payload.get("_auth_required_role"):
+        return True
     auth = payload.get("auth")
     return bool(isinstance(auth, dict))
 
@@ -48,14 +51,20 @@ def _has_auth_proof(payload: dict) -> bool:
     auth = payload.get("auth")
     if not isinstance(auth, dict):
         return False
+
     token = auth.get("token")
     required_role = auth.get("required_role")
-    return bool(
-        isinstance(token, str)
-        and token.strip()
-        and isinstance(required_role, str)
-        and required_role.strip()
-    )
+
+    if not (isinstance(token, str) and token.strip()):
+        return False
+    if not (isinstance(required_role, str) and required_role.strip()):
+        return False
+
+    baseline_role = payload.get("_auth_required_role")
+    if isinstance(baseline_role, str) and baseline_role.strip():
+        return required_role == baseline_role
+
+    return True
 
 
 def _error_ack(base: dict, code: str, message: str) -> dict:
@@ -80,7 +89,6 @@ def _apply_route_if_available(ack: dict, payload: dict) -> None:
         "capabilities": sorted(list(match.device.capabilities)),
         "reason": match.reason,
     }
-    # If payload didn't specify target.device_id, fill ack.device_id from route
     if not ack.get("device_id"):
         ack["device_id"] = match.device.device_id
 
@@ -89,7 +97,6 @@ def _ensure_meta(payload: dict) -> None:
     """
     Operational normalization:
     - Schema requires meta. If missing, supply safe defaults.
-    - In strict mode (compliance tests), callers should provide meta explicitly.
     """
     meta = payload.get("meta")
     if not isinstance(meta, dict):
@@ -126,8 +133,6 @@ def _ensure_intent_id(payload: dict) -> None:
 def _ensure_target(payload: dict) -> None:
     """
     Schema requires target. If missing, create an empty target.
-    Router may still resolve via intent defaults but schema validation will fail
-    unless target satisfies anyOf (device_id) OR (capability+zone).
     """
     if not isinstance(payload.get("target"), dict):
         payload["target"] = {}
@@ -141,42 +146,33 @@ def _ensure_params(payload: dict) -> None:
 def _enforce_unlock_door_auth(payload: dict) -> None:
     """
     v0.5 baseline: unlock_door requires owner auth by default.
-    If no auth provided, inject required_role and empty token (will fail until provided).
+
+    IMPORTANT:
+    - Do NOT inject an auth object with an empty token before schema validation,
+      because schema requires token minLength 1 if auth is present.
+    - Instead, record an internal requirement and let runtime return AUTH_REQUIRED
+      deterministically if auth proof is missing.
     """
     if payload.get("intent") != "unlock_door":
         return
-    auth = payload.get("auth")
-    if not isinstance(auth, dict):
-        payload["auth"] = {"required_role": "owner", "token": ""}
-        return
-    auth.setdefault("required_role", "owner")
-    auth.setdefault("token", "")
+
+    payload["_auth_required_role"] = "owner"
 
 
 def execute_intent(payload: dict) -> dict:
     """
-    v0.5 execution pipeline (schema-aligned):
-      1) Normalize operational envelope (intent_id/meta/params/target)
-      2) Enforce security baseline (unlock_door auth)
-      3) Validate against canonical schema (except debug echo)
-      4) Auth check
-      5) Routing annotation (hub)
-      6) Adapter execution
-      7) ACK result
+    v0.5 execution pipeline (schema-aligned)
     """
-    # Operational normalization
     _ensure_intent_id(payload)
     _ensure_meta(payload)
     _ensure_target(payload)
     _ensure_params(payload)
 
-    # Security baseline
     _enforce_unlock_door_auth(payload)
 
     ack = _make_ack_base(payload)
     intent = payload.get("intent")
 
-    # Optional: keep echo as a debug/devtool intent outside schema
     if intent == "echo":
         if _auth_required(payload) and not _has_auth_proof(payload):
             return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
@@ -201,12 +197,10 @@ def execute_intent(payload: dict) -> dict:
 
         return _success_ack(ack, result)
 
-    # Canonical schema validation for non-echo intents
     ok, message = validate_command(payload)
     if not ok:
         return _error_ack(ack, "SCHEMA_INVALID", message)
 
-    # Auth check (if auth object exists)
     if _auth_required(payload) and not _has_auth_proof(payload):
         return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
 
