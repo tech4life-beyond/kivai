@@ -130,10 +130,7 @@ def execute_intent(
         make_event(
             execution_id,
             "execute.start",
-            {
-                "strict": bool(config.strict),
-                "intent": payload.get("intent"),
-            },
+            {"strict": bool(config.strict), "intent": payload.get("intent")},
         )
     )
 
@@ -154,11 +151,7 @@ def execute_intent(
             make_event(
                 execution_id,
                 "auth.evaluated",
-                {
-                    "authorized": bool(authorized),
-                    "error_code": error_code,
-                    "intent": "echo",
-                },
+                {"authorized": bool(authorized), "error_code": error_code, "intent": "echo"},
             )
         )
         if not authorized:
@@ -200,11 +193,7 @@ def execute_intent(
         make_event(
             execution_id,
             "auth.evaluated",
-            {
-                "authorized": bool(authorized),
-                "error_code": error_code,
-                "intent": intent,
-            },
+            {"authorized": bool(authorized), "error_code": error_code, "intent": intent},
         )
     )
     if not authorized:
@@ -248,3 +237,4 @@ def execute_intent(
 
 def pretty_json(data: Any) -> str:
     return json.dumps(data, indent=2, ensure_ascii=False, sort_keys=False)
+
