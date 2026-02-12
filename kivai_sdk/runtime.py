@@ -80,6 +80,14 @@ def execute_intent(payload: dict) -> dict:
     ack = _make_ack_base(payload)
     intent = payload.get("intent")
 
+    # v0.4 security baseline: unlock_door requires auth by default
+    if intent == "unlock_door":
+        auth = payload.get("auth")
+        if not isinstance(auth, dict):
+            payload["auth"] = {"required": True}
+        else:
+            auth.setdefault("required", True)
+
     # Demo intent: echo (allowed outside canonical schema for runnable v0.x)
     if intent == "echo":
         if _auth_required(payload) and not _has_auth_proof(payload):
