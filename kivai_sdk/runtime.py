@@ -4,10 +4,11 @@ from datetime import datetime, timezone
 from typing import Any
 
 from kivai_sdk.adapters import AdapterContext, default_registry
-from kivai_sdk.router import route_target
-from kivai_sdk.validator import validate_command
-from kivai_sdk.security import evaluate_authorization
+from kivai_sdk.audit import DEFAULT_AUDIT_LOGGER, AuditLogger, make_event
 from kivai_sdk.config import DEFAULT_EXECUTION_CONFIG, ExecutionConfig
+from kivai_sdk.router import route_target
+from kivai_sdk.security import evaluate_authorization
+from kivai_sdk.validator import validate_command
 
 
 def _utc_now_iso() -> str:
@@ -23,11 +24,12 @@ def _get_target_device_id(payload: dict) -> str | None:
     return None
 
 
-def _make_ack_base(payload: dict) -> dict:
+def _make_ack_base(payload: dict, execution_id: str) -> dict:
     """
     Stable ACK envelope. Mirrors key routing fields for auditability.
     """
     return {
+        "execution_id": execution_id,
         "intent_id": str(payload.get("intent_id") or uuid.uuid4()),
         "timestamp": _utc_now_iso(),
         "status": "ok",
@@ -64,7 +66,7 @@ def _apply_route_if_available(ack: dict, payload: dict) -> None:
 
 def _ensure_meta(payload: dict) -> None:
     """
-    Operational normalization:
+    Operational normalization (dev mode only):
     - Schema requires meta. If missing, supply safe defaults.
     """
     meta = payload.get("meta")
@@ -115,24 +117,49 @@ def _ensure_params(payload: dict) -> None:
 def execute_intent(
     payload: dict,
     config: ExecutionConfig = DEFAULT_EXECUTION_CONFIG,
+    audit: AuditLogger = DEFAULT_AUDIT_LOGGER,
 ) -> dict:
     """
-    v0.6 execution pipeline (policy-driven, schema-aligned)
+    v0.7 execution pipeline (policy-driven, schema-aligned, auditable)
+    - Adds execution_id for traceability
+    - Supports strict mode (no normalization)
     """
-    # Normalization conditional según config.strict
+    execution_id = str(uuid.uuid4())
+
+    audit.emit(
+        make_event(
+            execution_id,
+            "execute.start",
+            {"strict": bool(config.strict), "intent": payload.get("intent")},
+        )
+    )
+
+    # Dev-mode normalization only
     if not config.strict:
         _ensure_intent_id(payload)
         _ensure_meta(payload)
         _ensure_target(payload)
         _ensure_params(payload)
 
-    ack = _make_ack_base(payload)
+    ack = _make_ack_base(payload, execution_id)
     intent = payload.get("intent")
 
     # Debug/devtool intent: echo (kept outside schema by design)
     if intent == "echo":
         authorized, error_code = evaluate_authorization(payload)
+        audit.emit(
+            make_event(
+                execution_id,
+                "auth.evaluated",
+                {
+                    "authorized": bool(authorized),
+                    "error_code": error_code,
+                    "intent": "echo",
+                },
+            )
+        )
         if not authorized:
+            audit.emit(make_event(execution_id, "execute.end", {"status": "failed"}))
             return _error_ack(
                 ack,
                 error_code or "AUTH_REQUIRED",
@@ -140,10 +167,13 @@ def execute_intent(
             )
 
         _apply_route_if_available(ack, payload)
+        if "route" in ack:
+            audit.emit(make_event(execution_id, "route.resolved", ack["route"]))
 
         registry = default_registry()
         adapter = registry.resolve("echo")
         if adapter is None:
+            audit.emit(make_event(execution_id, "execute.end", {"status": "failed"}))
             return _error_ack(
                 ack, "INTENT_UNSUPPORTED", "Adapter not registered for intent: echo"
             )
@@ -155,13 +185,27 @@ def execute_intent(
             err = result.get("error") if isinstance(result.get("error"), dict) else {}
             code = err.get("code") or "ADAPTER_ERROR"
             msg = err.get("message") or "Adapter execution failed"
+            audit.emit(make_event(execution_id, "execute.end", {"status": "failed"}))
             return _error_ack(ack, str(code), str(msg))
 
+        audit.emit(make_event(execution_id, "execute.end", {"status": "ok"}))
         return _success_ack(ack, result)
 
-    # Policy evaluation (v0.6)
+    # Policy evaluation (v0.6+)
     authorized, error_code = evaluate_authorization(payload)
+    audit.emit(
+        make_event(
+            execution_id,
+            "auth.evaluated",
+            {
+                "authorized": bool(authorized),
+                "error_code": error_code,
+                "intent": intent,
+            },
+        )
+    )
     if not authorized:
+        audit.emit(make_event(execution_id, "execute.end", {"status": "failed"}))
         return _error_ack(
             ack,
             error_code or "AUTH_REQUIRED",
@@ -170,14 +214,19 @@ def execute_intent(
 
     # Schema validation for all non-echo intents
     ok, message = validate_command(payload)
+    audit.emit(make_event(execution_id, "schema.validated", {"ok": bool(ok)}))
     if not ok:
+        audit.emit(make_event(execution_id, "execute.end", {"status": "failed"}))
         return _error_ack(ack, "SCHEMA_INVALID", message)
 
     _apply_route_if_available(ack, payload)
+    if "route" in ack:
+        audit.emit(make_event(execution_id, "route.resolved", ack["route"]))
 
     registry = default_registry()
     adapter = registry.resolve(intent)
     if adapter is None:
+        audit.emit(make_event(execution_id, "execute.end", {"status": "failed"}))
         return _error_ack(ack, "INTENT_UNSUPPORTED", f"Unsupported intent: {intent}")
 
     ctx = AdapterContext()
@@ -187,8 +236,10 @@ def execute_intent(
         err = result.get("error") if isinstance(result.get("error"), dict) else {}
         code = err.get("code") or "ADAPTER_ERROR"
         msg = err.get("message") or "Adapter execution failed"
+        audit.emit(make_event(execution_id, "execute.end", {"status": "failed"}))
         return _error_ack(ack, str(code), str(msg))
 
+    audit.emit(make_event(execution_id, "execute.end", {"status": "ok"}))
     return _success_ack(ack, result)
 
 
