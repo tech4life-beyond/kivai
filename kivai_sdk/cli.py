@@ -1,10 +1,43 @@
 import argparse
 import json
 import sys
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from kivai_sdk.validator import validate_command
 from kivai_sdk.runtime import execute_intent, pretty_json
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _make_canonical_payload(
+    *,
+    intent: str,
+    target: dict,
+    params: dict | None = None,
+    auth: dict | None = None,
+    language: str = "en",
+    confidence: float = 1.0,
+    source: str = "cli",
+) -> dict:
+    payload = {
+        "intent_id": str(uuid.uuid4()),
+        "intent": intent,
+        "target": target,
+        "params": params or {},
+        "meta": {
+            "timestamp": _utc_now_iso(),
+            "language": language,
+            "confidence": float(confidence),
+            "source": source,
+        },
+    }
+    if auth is not None:
+        payload["auth"] = auth
+    return payload
 
 
 def _cmd_validate(args: argparse.Namespace) -> int:
@@ -25,14 +58,14 @@ def _cmd_validate(args: argparse.Namespace) -> int:
 
 
 def _cmd_run_echo(args: argparse.Namespace) -> int:
-    # v0.1: build a minimal intent payload and execute through runtime pipeline
-    payload = {
-        "intent": "echo",
-        "message": args.message,
-        # future: device_id, routing, context, etc.
-        "auth": {"required": False},
-        "confidence": 1.0,
-    }
+    payload = _make_canonical_payload(
+        intent="echo",
+        target={"capability": "speaker", "zone": "living_room"},
+        params={"message": args.message},
+        auth=None,
+        language="en",
+        confidence=1.0,
+    )
     ack = execute_intent(payload)
     print(pretty_json(ack))
     return 0 if ack.get("status") == "ok" else 1
