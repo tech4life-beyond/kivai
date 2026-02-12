@@ -155,7 +155,6 @@ def _enforce_unlock_door_auth(payload: dict) -> None:
     """
     if payload.get("intent") != "unlock_door":
         return
-
     payload["_auth_required_role"] = "owner"
 
 
@@ -173,6 +172,7 @@ def execute_intent(payload: dict) -> dict:
     ack = _make_ack_base(payload)
     intent = payload.get("intent")
 
+    # Debug/devtool intent: echo (kept outside schema by design)
     if intent == "echo":
         if _auth_required(payload) and not _has_auth_proof(payload):
             return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
@@ -197,12 +197,14 @@ def execute_intent(payload: dict) -> dict:
 
         return _success_ack(ack, result)
 
+    # POLICY FIRST (baseline-required intents like unlock_door)
+    if _auth_required(payload) and not _has_auth_proof(payload):
+        return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
+
+    # Schema validation for all non-echo intents
     ok, message = validate_command(payload)
     if not ok:
         return _error_ack(ack, "SCHEMA_INVALID", message)
-
-    if _auth_required(payload) and not _has_auth_proof(payload):
-        return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
 
     _apply_route_if_available(ack, payload)
 

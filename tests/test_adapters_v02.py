@@ -14,6 +14,9 @@ class TestAdaptersV02(unittest.TestCase):
         reg = default_registry()
         adapter = reg.resolve("echo")
         ctx = AdapterContext(gateway_id="test-gw")
-        result = adapter.execute({"intent": "echo", "message": "hola"}, ctx)
+
+        # v0.5 schema-aligned: message lives in params
+        result = adapter.execute({"intent": "echo", "params": {"message": "hola"}}, ctx)
+
         self.assertEqual(result["echo"], "hola")
         self.assertEqual(result["gateway_id"], "test-gw")

@@ -62,7 +62,6 @@ class TestV04CoreIntents(unittest.TestCase):
             target={"device_id": "door-front-01"},
             params={},
         )
-        # runtime enforces auth baseline for unlock_door
         ack = execute_intent(payload)
         self.assertEqual(ack["status"], "failed")
         self.assertEqual(ack["error"]["code"], "AUTH_REQUIRED")
