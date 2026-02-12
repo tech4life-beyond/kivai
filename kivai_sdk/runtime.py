@@ -88,17 +88,24 @@ def execute_intent(payload: dict) -> dict:
         else:
             auth.setdefault("required", True)
 
-    # Demo intent: echo (allowed outside canonical schema for runnable v0.x)
-    if intent == "echo":
+    # v0.4 builtin intents are allowed outside the canonical schema so the platform
+    # remains runnable while schema v1 is stabilized/reviewed.
+    builtin_intents = {"echo", "set_temperature", "play_music", "unlock_door"}
+
+    if intent in builtin_intents:
         if _auth_required(payload) and not _has_auth_proof(payload):
             return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
 
         _apply_route_if_available(ack, payload)
 
         registry = default_registry()
-        adapter = registry.resolve("echo")
+        adapter = registry.resolve(intent)
         if adapter is None:
-            return _error_ack(ack, "INTENT_UNSUPPORTED", "Echo adapter not registered")
+            return _error_ack(
+                ack,
+                "INTENT_UNSUPPORTED",
+                f"Adapter not registered for intent: {intent}",
+            )
 
         ctx = AdapterContext()
         result = adapter.execute(payload, ctx)
