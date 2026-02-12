@@ -130,10 +130,7 @@ def execute_intent(
         make_event(
             execution_id,
             "execute.start",
-            {
-                "strict": bool(config.strict),
-                "intent": payload.get("intent"),
-            },
+            {"strict": bool(config.strict), "intent": payload.get("intent")},
         )
     )
 
