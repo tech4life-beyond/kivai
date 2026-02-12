@@ -12,35 +12,59 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def _get_target_device_id(payload: dict) -> str | None:
+    target = payload.get("target")
+    if isinstance(target, dict):
+        device_id = target.get("device_id")
+        if isinstance(device_id, str) and device_id.strip():
+            return device_id
+    return None
+
+
 def _make_ack_base(payload: dict) -> dict:
     """
-    Minimal ACK envelope (v0.1). Designed to be stable and auditable.
+    Stable ACK envelope. Mirrors key routing fields for auditability.
     """
     return {
-        "intent_id": str(uuid.uuid4()),
+        "intent_id": str(payload.get("intent_id") or uuid.uuid4()),
         "timestamp": _utc_now_iso(),
         "status": "ok",
         "intent": payload.get("intent"),
-        "device_id": payload.get("device_id"),
+        "device_id": _get_target_device_id(payload),
     }
 
 
 def _auth_required(payload: dict) -> bool:
+    """
+    Schema-aligned auth:
+      auth = { required_role, token }
+    If auth exists, it's required.
+    Additionally, some intents (e.g., unlock_door) may require auth by baseline.
+    """
+    if payload.get("_auth_required_role"):
+        return True
     auth = payload.get("auth")
-    return bool(isinstance(auth, dict) and auth.get("required") is True)
+    return bool(isinstance(auth, dict))
 
 
 def _has_auth_proof(payload: dict) -> bool:
-    """
-    v0.1 auth proof is intentionally simple:
-    - if payload.auth.token exists and is non-empty, treat as present
-    Future: JWT, mTLS, local device pairing, role-based policy engine, etc.
-    """
     auth = payload.get("auth")
     if not isinstance(auth, dict):
         return False
+
     token = auth.get("token")
-    return bool(isinstance(token, str) and token.strip())
+    required_role = auth.get("required_role")
+
+    if not (isinstance(token, str) and token.strip()):
+        return False
+    if not (isinstance(required_role, str) and required_role.strip()):
+        return False
+
+    baseline_role = payload.get("_auth_required_role")
+    if isinstance(baseline_role, str) and baseline_role.strip():
+        return required_role == baseline_role
+
+    return True
 
 
 def _error_ack(base: dict, code: str, message: str) -> dict:
@@ -65,52 +89,106 @@ def _apply_route_if_available(ack: dict, payload: dict) -> None:
         "capabilities": sorted(list(match.device.capabilities)),
         "reason": match.reason,
     }
+    if not ack.get("device_id"):
+        ack["device_id"] = match.device.device_id
+
+
+def _ensure_meta(payload: dict) -> None:
+    """
+    Operational normalization:
+    - Schema requires meta. If missing, supply safe defaults.
+    """
+    meta = payload.get("meta")
+    if not isinstance(meta, dict):
+        payload["meta"] = {
+            "timestamp": _utc_now_iso(),
+            "language": "en",
+            "confidence": float(
+                payload.get("confidence")
+                if isinstance(payload.get("confidence"), (int, float))
+                else 1.0
+            ),
+            "source": "gateway",
+        }
+        return
+
+    meta.setdefault("timestamp", _utc_now_iso())
+    meta.setdefault("language", "en")
+    if "confidence" not in meta:
+        meta["confidence"] = float(
+            payload.get("confidence")
+            if isinstance(payload.get("confidence"), (int, float))
+            else 1.0
+        )
+
+
+def _ensure_intent_id(payload: dict) -> None:
+    if (
+        not isinstance(payload.get("intent_id"), str)
+        or len(payload.get("intent_id", "")) < 8
+    ):
+        payload["intent_id"] = str(uuid.uuid4())
+
+
+def _ensure_target(payload: dict) -> None:
+    """
+    Schema requires target. If missing, create an empty target.
+    """
+    if not isinstance(payload.get("target"), dict):
+        payload["target"] = {}
+
+
+def _ensure_params(payload: dict) -> None:
+    if "params" not in payload or not isinstance(payload.get("params"), dict):
+        payload["params"] = {}
+
+
+def _enforce_unlock_door_auth(payload: dict) -> None:
+    """
+    v0.5 baseline: unlock_door requires owner auth by default.
+
+    IMPORTANT:
+    - Do NOT inject an auth object with an empty token before schema validation,
+      because schema requires token minLength 1 if auth is present.
+    - Instead, record an internal requirement and let runtime return AUTH_REQUIRED
+      deterministically if auth proof is missing.
+    """
+    if payload.get("intent") != "unlock_door":
+        return
+    payload["_auth_required_role"] = "owner"
 
 
 def execute_intent(payload: dict) -> dict:
     """
-    v0.3 execution pipeline:
-      1) ACK envelope
-      2) Demo intents allowed (echo) without canonical schema validation
-      3) Canonical schema validation for non-demo intents
-      4) Auth stub (when required)
-      5) Hub routing annotation (device_id / target.zone / target.capability)
-      6) Adapter execution
+    v0.5 execution pipeline (schema-aligned)
     """
+    _ensure_intent_id(payload)
+    _ensure_meta(payload)
+    _ensure_target(payload)
+    _ensure_params(payload)
+
+    _enforce_unlock_door_auth(payload)
+
     ack = _make_ack_base(payload)
     intent = payload.get("intent")
 
-    # v0.4 security baseline: unlock_door requires auth by default
-    if intent == "unlock_door":
-        auth = payload.get("auth")
-        if not isinstance(auth, dict):
-            payload["auth"] = {"required": True}
-        else:
-            auth.setdefault("required", True)
-
-    # v0.4 builtin intents are allowed outside the canonical schema so the platform
-    # remains runnable while schema v1 is stabilized/reviewed.
-    builtin_intents = {"echo", "set_temperature", "play_music", "unlock_door"}
-
-    if intent in builtin_intents:
+    # Debug/devtool intent: echo (kept outside schema by design)
+    if intent == "echo":
         if _auth_required(payload) and not _has_auth_proof(payload):
             return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
 
         _apply_route_if_available(ack, payload)
 
         registry = default_registry()
-        adapter = registry.resolve(intent)
+        adapter = registry.resolve("echo")
         if adapter is None:
             return _error_ack(
-                ack,
-                "INTENT_UNSUPPORTED",
-                f"Adapter not registered for intent: {intent}",
+                ack, "INTENT_UNSUPPORTED", "Adapter not registered for intent: echo"
             )
 
         ctx = AdapterContext()
         result = adapter.execute(payload, ctx)
 
-        # Normalize adapter result into ACK success/failure (v0.4 contract)
         if isinstance(result, dict) and result.get("ok") is False:
             err = result.get("error") if isinstance(result.get("error"), dict) else {}
             code = err.get("code") or "ADAPTER_ERROR"
@@ -119,26 +197,25 @@ def execute_intent(payload: dict) -> dict:
 
         return _success_ack(ack, result)
 
-    # Non-demo intents: enforce canonical schema validation first
+    # POLICY FIRST (baseline-required intents like unlock_door)
+    if _auth_required(payload) and not _has_auth_proof(payload):
+        return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
+
+    # Schema validation for all non-echo intents
     ok, message = validate_command(payload)
     if not ok:
         return _error_ack(ack, "SCHEMA_INVALID", message)
-
-    if _auth_required(payload) and not _has_auth_proof(payload):
-        return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
 
     _apply_route_if_available(ack, payload)
 
     registry = default_registry()
     adapter = registry.resolve(intent)
-
     if adapter is None:
         return _error_ack(ack, "INTENT_UNSUPPORTED", f"Unsupported intent: {intent}")
 
     ctx = AdapterContext()
     result = adapter.execute(payload, ctx)
 
-    # Normalize adapter result into ACK success/failure (v0.4 contract)
     if isinstance(result, dict) and result.get("ok") is False:
         err = result.get("error") if isinstance(result.get("error"), dict) else {}
         code = err.get("code") or "ADAPTER_ERROR"

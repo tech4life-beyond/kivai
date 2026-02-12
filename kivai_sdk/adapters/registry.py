@@ -45,7 +45,10 @@ class EchoAdapter:
     intent = "echo"
 
     def execute(self, payload: dict, ctx: AdapterContext) -> AdapterResult:
-        msg = payload.get("message", "")
+        params = (
+            payload.get("params") if isinstance(payload.get("params"), dict) else {}
+        )
+        msg = params.get("message", "")
         return {"echo": msg, "gateway_id": ctx.gateway_id}
 
 
