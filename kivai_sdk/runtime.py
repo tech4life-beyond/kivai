@@ -3,9 +3,9 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from kivai_sdk.validator import validate_command
 from kivai_sdk.adapters import AdapterContext, default_registry
 from kivai_sdk.router import route_target
+from kivai_sdk.validator import validate_command
 
 
 def _utc_now_iso() -> str:
@@ -55,22 +55,37 @@ def _success_ack(base: dict, result: dict) -> dict:
     return base
 
 
+def _apply_route_if_available(ack: dict, payload: dict) -> None:
+    match = route_target(payload)
+    if match is None:
+        return
+    ack["route"] = {
+        "device_id": match.device.device_id,
+        "zone": match.device.zone,
+        "capabilities": sorted(list(match.device.capabilities)),
+        "reason": match.reason,
+    }
+
+
 def execute_intent(payload: dict) -> dict:
     """
-    v0.2 execution pipeline:
+    v0.3 execution pipeline:
       1) ACK envelope
-      2) Auth stub (when required)
-      3) Adapter execution (demo intents allowed)
-      4) Canonical schema validation for non-demo intents
+      2) Demo intents allowed (echo) without canonical schema validation
+      3) Canonical schema validation for non-demo intents
+      4) Auth stub (when required)
+      5) Hub routing annotation (device_id / target.zone / target.capability)
+      6) Adapter execution
     """
     ack = _make_ack_base(payload)
     intent = payload.get("intent")
 
-    # v0.2: allow a small "developer demo" intent outside the canonical schema
-    # so the project remains runnable without changing the schema.
+    # Demo intent: echo (allowed outside canonical schema for runnable v0.x)
     if intent == "echo":
         if _auth_required(payload) and not _has_auth_proof(payload):
             return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
+
+        _apply_route_if_available(ack, payload)
 
         registry = default_registry()
         adapter = registry.resolve("echo")
@@ -81,7 +96,7 @@ def execute_intent(payload: dict) -> dict:
         result = adapter.execute(payload, ctx)
         return _success_ack(ack, result)
 
-    # For all non-demo intents, enforce canonical schema validation first.
+    # Non-demo intents: enforce canonical schema validation first
     ok, message = validate_command(payload)
     if not ok:
         return _error_ack(ack, "SCHEMA_INVALID", message)
@@ -89,15 +104,7 @@ def execute_intent(payload: dict) -> dict:
     if _auth_required(payload) and not _has_auth_proof(payload):
         return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
 
-    # Add routing info if available
-    match = route_target(payload)
-    if match is not None:
-        ack["route"] = {
-            "device_id": match.device.device_id,
-            "zone": match.device.zone,
-            "capabilities": sorted(list(match.device.capabilities)),
-            "reason": match.reason,
-        }
+    _apply_route_if_available(ack, payload)
 
     registry = default_registry()
     adapter = registry.resolve(intent)
