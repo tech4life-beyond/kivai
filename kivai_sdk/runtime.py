@@ -102,6 +102,14 @@ def execute_intent(payload: dict) -> dict:
 
         ctx = AdapterContext()
         result = adapter.execute(payload, ctx)
+
+        # Normalize adapter result into ACK success/failure (v0.4 contract)
+        if isinstance(result, dict) and result.get("ok") is False:
+            err = result.get("error") if isinstance(result.get("error"), dict) else {}
+            code = err.get("code") or "ADAPTER_ERROR"
+            msg = err.get("message") or "Adapter execution failed"
+            return _error_ack(ack, str(code), str(msg))
+
         return _success_ack(ack, result)
 
     # Non-demo intents: enforce canonical schema validation first
@@ -122,6 +130,14 @@ def execute_intent(payload: dict) -> dict:
 
     ctx = AdapterContext()
     result = adapter.execute(payload, ctx)
+
+    # Normalize adapter result into ACK success/failure (v0.4 contract)
+    if isinstance(result, dict) and result.get("ok") is False:
+        err = result.get("error") if isinstance(result.get("error"), dict) else {}
+        code = err.get("code") or "ADAPTER_ERROR"
+        msg = err.get("message") or "Adapter execution failed"
+        return _error_ack(ack, str(code), str(msg))
+
     return _success_ack(ack, result)
 
 
