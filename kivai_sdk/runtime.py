@@ -6,6 +6,7 @@ from typing import Any
 from kivai_sdk.adapters import AdapterContext, default_registry
 from kivai_sdk.router import route_target
 from kivai_sdk.validator import validate_command
+from kivai_sdk.security import evaluate_authorization
 
 
 def _utc_now_iso() -> str:
@@ -32,39 +33,6 @@ def _make_ack_base(payload: dict) -> dict:
         "intent": payload.get("intent"),
         "device_id": _get_target_device_id(payload),
     }
-
-
-def _auth_required(payload: dict) -> bool:
-    """
-    Schema-aligned auth:
-      auth = { required_role, token }
-    If auth exists, it's required.
-    Additionally, some intents (e.g., unlock_door) may require auth by baseline.
-    """
-    if payload.get("_auth_required_role"):
-        return True
-    auth = payload.get("auth")
-    return bool(isinstance(auth, dict))
-
-
-def _has_auth_proof(payload: dict) -> bool:
-    auth = payload.get("auth")
-    if not isinstance(auth, dict):
-        return False
-
-    token = auth.get("token")
-    required_role = auth.get("required_role")
-
-    if not (isinstance(token, str) and token.strip()):
-        return False
-    if not (isinstance(required_role, str) and required_role.strip()):
-        return False
-
-    baseline_role = payload.get("_auth_required_role")
-    if isinstance(baseline_role, str) and baseline_role.strip():
-        return required_role == baseline_role
-
-    return True
 
 
 def _error_ack(base: dict, code: str, message: str) -> dict:
@@ -143,39 +111,27 @@ def _ensure_params(payload: dict) -> None:
         payload["params"] = {}
 
 
-def _enforce_unlock_door_auth(payload: dict) -> None:
-    """
-    v0.5 baseline: unlock_door requires owner auth by default.
-
-    IMPORTANT:
-    - Do NOT inject an auth object with an empty token before schema validation,
-      because schema requires token minLength 1 if auth is present.
-    - Instead, record an internal requirement and let runtime return AUTH_REQUIRED
-      deterministically if auth proof is missing.
-    """
-    if payload.get("intent") != "unlock_door":
-        return
-    payload["_auth_required_role"] = "owner"
-
-
 def execute_intent(payload: dict) -> dict:
     """
-    v0.5 execution pipeline (schema-aligned)
+    v0.6 execution pipeline (policy-driven, schema-aligned)
     """
     _ensure_intent_id(payload)
     _ensure_meta(payload)
     _ensure_target(payload)
     _ensure_params(payload)
 
-    _enforce_unlock_door_auth(payload)
-
     ack = _make_ack_base(payload)
     intent = payload.get("intent")
 
     # Debug/devtool intent: echo (kept outside schema by design)
     if intent == "echo":
-        if _auth_required(payload) and not _has_auth_proof(payload):
-            return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
+        authorized, error_code = evaluate_authorization(payload)
+        if not authorized:
+            return _error_ack(
+                ack,
+                error_code or "AUTH_REQUIRED",
+                "Authorization failed",
+            )
 
         _apply_route_if_available(ack, payload)
 
@@ -197,9 +153,14 @@ def execute_intent(payload: dict) -> dict:
 
         return _success_ack(ack, result)
 
-    # POLICY FIRST (baseline-required intents like unlock_door)
-    if _auth_required(payload) and not _has_auth_proof(payload):
-        return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
+    # Policy evaluation (v0.6)
+    authorized, error_code = evaluate_authorization(payload)
+    if not authorized:
+        return _error_ack(
+            ack,
+            error_code or "AUTH_REQUIRED",
+            "Authorization failed",
+        )
 
     # Schema validation for all non-echo intents
     ok, message = validate_command(payload)

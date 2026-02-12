@@ -44,9 +44,9 @@ class TestRuntimeV01(unittest.TestCase):
 
     def test_auth_required_without_token(self):
         payload = canonical_payload(
-            "echo",
-            target={"capability": "speaker", "zone": "living_room"},
-            params={"message": "secure"},
+            "unlock_door",
+            target={"device_id": "door-front-01"},
+            params={},
             auth={"required_role": "owner", "token": ""},
         )
         ack = execute_intent(payload)
