@@ -5,6 +5,7 @@ from typing import Any
 
 from kivai_sdk.validator import validate_command
 from kivai_sdk.adapters import AdapterContext, default_registry
+from kivai_sdk.router import route_target
 
 
 def _utc_now_iso() -> str:
@@ -87,6 +88,16 @@ def execute_intent(payload: dict) -> dict:
 
     if _auth_required(payload) and not _has_auth_proof(payload):
         return _error_ack(ack, "AUTH_REQUIRED", "Owner authentication required")
+
+    # Add routing info if available
+    match = route_target(payload)
+    if match is not None:
+        ack["route"] = {
+            "device_id": match.device.device_id,
+            "zone": match.device.zone,
+            "capabilities": sorted(list(match.device.capabilities)),
+            "reason": match.reason,
+        }
 
     registry = default_registry()
     adapter = registry.resolve(intent)
