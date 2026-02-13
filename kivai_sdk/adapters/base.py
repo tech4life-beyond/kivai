@@ -1,33 +1,32 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Protocol
+from typing import Protocol, runtime_checkable
+
+from .capabilities import AdapterCapabilities
 
 
-AdapterResult = Dict[str, Any]
-
-
-@dataclass(frozen=True)
+@dataclass
 class AdapterContext:
     """
-    Execution context (v0.2).
-    Keep minimal and explicit (auditable).
+    Execution context passed to adapters.
+    Extend over time (gateway_id, correlation IDs, device session, etc.)
     """
 
-    gateway_id: str = "local-gateway"
-    user_id: str | None = None
-    request_id: str | None = None
+    gateway_id: str = "local"
 
 
+@runtime_checkable
 class KivaiAdapter(Protocol):
     """
-    Adapter contract: intent payload -> execution result.
-
-    - Deterministic behavior
-    - No hidden state
-    - No network by default (networked adapters are explicit)
+    Adapter interface contract.
+    Concrete adapters implement this protocol.
     """
 
-    intent: str
+    @property
+    def intent(self) -> str: ...
 
-    def execute(self, payload: dict, ctx: AdapterContext) -> AdapterResult: ...
+    @property
+    def capabilities(self) -> AdapterCapabilities: ...
+
+    def execute(self, payload: dict, ctx: AdapterContext) -> dict: ...

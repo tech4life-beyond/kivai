@@ -1,22 +1,32 @@
 from __future__ import annotations
 
-from kivai_sdk.adapters.base import AdapterContext, AdapterResult
+from kivai_sdk.adapters.base import AdapterContext
+from kivai_sdk.adapters.capabilities import AdapterCapabilities
 
 
 class SetTemperatureAdapter:
     """
     Reference adapter: set_temperature
 
-    Expected payload fields (v0.4 minimal):
+    Expected payload fields (schema-aligned):
       - intent: "set_temperature"
       - params.value: number
       - params.unit: "C" or "F" (optional; default "C")
-      - location OR routing target (handled by router)
     """
 
     intent = "set_temperature"
 
-    def execute(self, payload: dict, ctx: AdapterContext) -> AdapterResult:
+    @property
+    def capabilities(self) -> AdapterCapabilities:
+        return AdapterCapabilities(
+            intent="set_temperature",
+            required_capabilities=frozenset({"thermostat"}),
+            requires_auth=False,
+            required_role=None,
+            timeout_ms=5000,
+        )
+
+    def execute(self, payload: dict, ctx: AdapterContext) -> dict:
         params = (
             payload.get("params") if isinstance(payload.get("params"), dict) else {}
         )

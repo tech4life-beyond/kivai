@@ -1,6 +1,7 @@
 from .base import AdapterContext, KivaiAdapter
 from .registry import AdapterRegistry, default_registry
 from .contracts import AdapterError, AdapterResult, normalize_adapter_output
+from .capabilities import AdapterCapabilities
 
 __all__ = [
     "AdapterContext",
@@ -10,4 +11,5 @@ __all__ = [
     "AdapterError",
     "AdapterResult",
     "normalize_adapter_output",
+    "AdapterCapabilities",
 ]

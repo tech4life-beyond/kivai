@@ -1,18 +1,31 @@
 from __future__ import annotations
 
-from kivai_sdk.adapters.base import AdapterContext, AdapterResult
+from kivai_sdk.adapters.base import AdapterContext
+from kivai_sdk.adapters.capabilities import AdapterCapabilities
 
 
 class UnlockDoorAdapter:
     """
     Reference adapter: unlock_door
 
-    v0.4: returns a deterministic result. Security is enforced by runtime auth stub.
+    v0.9 strict:
+    - adapter declares auth baseline (owner)
+    - runtime enforces auth deterministically
     """
 
     intent = "unlock_door"
 
-    def execute(self, payload: dict, ctx: AdapterContext) -> AdapterResult:
+    @property
+    def capabilities(self) -> AdapterCapabilities:
+        return AdapterCapabilities(
+            intent="unlock_door",
+            required_capabilities=frozenset({"lock"}),
+            requires_auth=True,
+            required_role="owner",
+            timeout_ms=5000,
+        )
+
+    def execute(self, payload: dict, ctx: AdapterContext) -> dict:
         return {
             "ok": True,
             "action": "unlock_door",

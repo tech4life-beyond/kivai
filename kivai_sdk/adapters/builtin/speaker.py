@@ -1,20 +1,31 @@
 from __future__ import annotations
 
-from kivai_sdk.adapters.base import AdapterContext, AdapterResult
+from kivai_sdk.adapters.base import AdapterContext
+from kivai_sdk.adapters.capabilities import AdapterCapabilities
 
 
 class PlayMusicAdapter:
     """
     Reference adapter: play_music
 
-    Expected payload fields (v0.4 minimal):
+    Expected payload fields:
       - intent: "play_music"
       - params.query: string (optional; default "default_playlist")
     """
 
     intent = "play_music"
 
-    def execute(self, payload: dict, ctx: AdapterContext) -> AdapterResult:
+    @property
+    def capabilities(self) -> AdapterCapabilities:
+        return AdapterCapabilities(
+            intent="play_music",
+            required_capabilities=frozenset({"speaker"}),
+            requires_auth=False,
+            required_role=None,
+            timeout_ms=5000,
+        )
+
+    def execute(self, payload: dict, ctx: AdapterContext) -> dict:
         params = (
             payload.get("params") if isinstance(payload.get("params"), dict) else {}
         )
