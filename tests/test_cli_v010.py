@@ -8,8 +8,10 @@ from kivai_sdk.cli import main
 
 class TestCLIV010(unittest.TestCase):
     def test_cli_help(self):
-        rc = main(["-h"])
-        self.assertEqual(rc, 0)
+        # argparse exits with SystemExit(0) on -h
+        with self.assertRaises(SystemExit) as cm:
+            main(["-h"])
+        self.assertEqual(cm.exception.code, 0)
 
     def test_cli_list_adapters(self):
         rc = main(["list", "adapters"])
