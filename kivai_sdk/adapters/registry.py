@@ -3,18 +3,21 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Iterable
 
-from .base import AdapterContext, AdapterResult, KivaiAdapter
 from kivai_sdk.adapters.builtin import (
     PlayMusicAdapter,
     SetTemperatureAdapter,
     UnlockDoorAdapter,
 )
 
+from .base import AdapterContext, KivaiAdapter
+from .capabilities import AdapterCapabilities
+
 
 @dataclass
 class AdapterRegistry:
     """
-    Simple in-process registry (v0.2).
+    Simple in-process registry.
+
     Future: dynamic discovery, versioning, capability matching, remote adapters.
     """
 
@@ -39,12 +42,23 @@ class AdapterRegistry:
 
 class EchoAdapter:
     """
-    v0.2 reference adapter (local, deterministic).
+    Reference adapter: echo (local, deterministic).
+    Kept outside schema by design, but still must declare capabilities in v0.9 strict.
     """
 
     intent = "echo"
 
-    def execute(self, payload: dict, ctx: AdapterContext) -> AdapterResult:
+    @property
+    def capabilities(self) -> AdapterCapabilities:
+        return AdapterCapabilities(
+            intent="echo",
+            required_capabilities=frozenset(),
+            requires_auth=False,
+            required_role=None,
+            timeout_ms=1000,
+        )
+
+    def execute(self, payload: dict, ctx: AdapterContext) -> dict:
         params = (
             payload.get("params") if isinstance(payload.get("params"), dict) else {}
         )
@@ -58,5 +72,4 @@ def default_registry() -> AdapterRegistry:
     reg.register(SetTemperatureAdapter())
     reg.register(PlayMusicAdapter())
     reg.register(UnlockDoorAdapter())
-
     return reg
