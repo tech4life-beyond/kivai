@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from kivai_sdk.adapters import AdapterContext, default_registry
+from kivai_sdk.adapters.contracts import normalize_adapter_output
 from kivai_sdk.audit import DEFAULT_AUDIT_LOGGER, AuditLogger, make_event
 from kivai_sdk.config import DEFAULT_EXECUTION_CONFIG, ExecutionConfig
 from kivai_sdk.router import route_target
@@ -179,17 +180,15 @@ def execute_intent(
             )
 
         ctx = AdapterContext()
-        result = adapter.execute(payload, ctx)
+        raw = adapter.execute(payload, ctx)
+        res = normalize_adapter_output(raw)
 
-        if isinstance(result, dict) and result.get("ok") is False:
-            err = result.get("error") if isinstance(result.get("error"), dict) else {}
-            code = err.get("code") or "ADAPTER_ERROR"
-            msg = err.get("message") or "Adapter execution failed"
+        if not res.ok:
             audit.emit(make_event(execution_id, "execute.end", {"status": "failed"}))
-            return _error_ack(ack, str(code), str(msg))
+            return _error_ack(ack, res.error.code, res.error.message)
 
         audit.emit(make_event(execution_id, "execute.end", {"status": "ok"}))
-        return _success_ack(ack, result)
+        return _success_ack(ack, res.data or {})
 
     # Policy evaluation (v0.6+)
     authorized, error_code = evaluate_authorization(payload)
@@ -230,17 +229,15 @@ def execute_intent(
         return _error_ack(ack, "INTENT_UNSUPPORTED", f"Unsupported intent: {intent}")
 
     ctx = AdapterContext()
-    result = adapter.execute(payload, ctx)
+    raw = adapter.execute(payload, ctx)
+    res = normalize_adapter_output(raw)
 
-    if isinstance(result, dict) and result.get("ok") is False:
-        err = result.get("error") if isinstance(result.get("error"), dict) else {}
-        code = err.get("code") or "ADAPTER_ERROR"
-        msg = err.get("message") or "Adapter execution failed"
+    if not res.ok:
         audit.emit(make_event(execution_id, "execute.end", {"status": "failed"}))
-        return _error_ack(ack, str(code), str(msg))
+        return _error_ack(ack, res.error.code, res.error.message)
 
     audit.emit(make_event(execution_id, "execute.end", {"status": "ok"}))
-    return _success_ack(ack, result)
+    return _success_ack(ack, res.data or {})
 
 
 def pretty_json(data: Any) -> str:
