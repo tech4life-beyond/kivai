@@ -1,10 +1,13 @@
-from .base import AdapterContext, AdapterResult, KivaiAdapter
+from .base import AdapterContext, KivaiAdapter
 from .registry import AdapterRegistry, default_registry
+from .contracts import AdapterError, AdapterResult, normalize_adapter_output
 
 __all__ = [
     "AdapterContext",
-    "AdapterResult",
     "KivaiAdapter",
     "AdapterRegistry",
     "default_registry",
+    "AdapterError",
+    "AdapterResult",
+    "normalize_adapter_output",
 ]
