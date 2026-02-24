@@ -4,7 +4,6 @@ from kivai_sdk.adapters.base import AdapterContext
 from kivai_sdk.adapters.capabilities import AdapterCapabilities
 
 
-# REQUIRED by tests and CLI
 class EchoAdapter:
     @property
     def intent(self) -> str:
@@ -23,10 +22,10 @@ class EchoAdapter:
         params = payload.get("params") or {}
         message = params.get("message")
 
-        # CRITICAL: tests expect key "echo"
         return {
             "ok": True,
             "echo": message,
+            "gateway_id": ctx.gateway_id,  # REQUIRED BY TEST
         }
 
 
