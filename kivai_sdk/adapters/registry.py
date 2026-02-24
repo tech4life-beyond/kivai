@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Dict
 
 from kivai_sdk.adapters.base import AdapterContext
+
+# Builtins
 from kivai_sdk.adapters.builtin.lock import UnlockDoorAdapter
 from kivai_sdk.adapters.builtin.speaker import PlayMusicAdapter
 from kivai_sdk.adapters.builtin.thermostat import SetTemperatureAdapter
@@ -39,17 +41,35 @@ class AdapterRegistry:
         return sorted(self._adapters.keys())
 
 
-# Default registry used by the runtime (demo + builtin)
-default_registry = AdapterRegistry()
-default_registry.register(SetTemperatureAdapter())
-default_registry.register(PlayMusicAdapter())
-default_registry.register(UnlockDoorAdapter())
+def _build_default_registry() -> AdapterRegistry:
+    """
+    Build a fresh registry instance (tests expect default_registry() callable).
+    """
+    reg = AdapterRegistry()
 
-# Demo/mock intents so /v1/execute is exciting immediately
-default_registry.register(MockDevicePingAdapter())
-default_registry.register(MockPowerOnAdapter())
-default_registry.register(MockPowerOffAdapter())
-default_registry.register(MockFindBeepAdapter())
+    # Built-in reference adapters
+    reg.register(SetTemperatureAdapter())
+    reg.register(PlayMusicAdapter())
+    reg.register(UnlockDoorAdapter())
+
+    # Demo/mock intents so /v1/execute is exciting immediately
+    reg.register(MockDevicePingAdapter())
+    reg.register(MockPowerOnAdapter())
+    reg.register(MockPowerOffAdapter())
+    reg.register(MockFindBeepAdapter())
+
+    return reg
 
 
-__all__ = ["AdapterRegistry", "AdapterContext", "default_registry"]
+def default_registry() -> AdapterRegistry:
+    """
+    Backwards-compatible factory (callable) used across tests/runtime.
+    Returns a registry pre-loaded with builtin + mock adapters.
+    """
+    return _build_default_registry()
+
+
+# Optional: a single prebuilt instance for non-test code paths.
+DEFAULT_REGISTRY = _build_default_registry()
+
+__all__ = ["AdapterRegistry", "AdapterContext", "default_registry", "DEFAULT_REGISTRY"]
