@@ -6,28 +6,40 @@ from kivai_sdk.adapters.capabilities import AdapterCapabilities
 
 class UnlockDoorAdapter:
     """
-    Reference adapter: unlock_door
+    Built-in reference adapter (demo-grade).
+    Intent: unlock_door
 
-    v0.9 strict:
-    - adapter declares auth baseline (owner)
-    - runtime enforces auth deterministically
+    NOTE:
+    - This is NOT a real lock integration.
+    - It only returns a deterministic result for demos/tests.
     """
 
-    intent = "unlock_door"
+    @property
+    def intent(self) -> str:
+        return "unlock_door"
 
     @property
     def capabilities(self) -> AdapterCapabilities:
+        # Locks are sensitive; require auth baseline.
         return AdapterCapabilities(
-            intent="unlock_door",
-            required_capabilities=frozenset({"lock"}),
+            intent=self.intent,
+            required_capabilities=["lock_control"],
             requires_auth=True,
             required_role="owner",
-            timeout_ms=5000,
         )
 
     def execute(self, payload: dict, ctx: AdapterContext) -> dict:
+        target = payload.get("target") or {}
+        device_id = target.get("device_id") or "unknown-device"
         return {
             "ok": True,
-            "action": "unlock_door",
-            "gateway_id": ctx.gateway_id,
+            "adapter": "builtin",
+            "intent": self.intent,
+            "device_id": device_id,
+            "state": "unlocked",
         }
+
+
+# Backwards-compatible alias:
+# Some older docs/branches may refer to DoorLockAdapter.
+DoorLockAdapter = UnlockDoorAdapter
