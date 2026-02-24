@@ -4,6 +4,34 @@ from kivai_sdk.adapters.base import AdapterContext
 from kivai_sdk.adapters.capabilities import AdapterCapabilities
 
 
+# REQUIRED by tests and CLI
+class EchoAdapter:
+    @property
+    def intent(self) -> str:
+        return "echo"
+
+    @property
+    def capabilities(self) -> AdapterCapabilities:
+        return AdapterCapabilities(
+            intent="echo",
+            required_capabilities=frozenset(),
+            requires_auth=False,
+            required_role=None,
+        )
+
+    def execute(self, payload: dict, ctx: AdapterContext) -> dict:
+        params = payload.get("params") or {}
+        message = params.get("message")
+
+        return {
+            "ok": True,
+            "adapter": "mock",
+            "intent": "echo",
+            "message": message,
+            "gateway_id": ctx.gateway_id,
+        }
+
+
 class MockDevicePingAdapter:
     @property
     def intent(self) -> str:
@@ -12,8 +40,8 @@ class MockDevicePingAdapter:
     @property
     def capabilities(self) -> AdapterCapabilities:
         return AdapterCapabilities(
-            intent=self.intent,
-            required_capabilities=[],
+            intent="device.ping",
+            required_capabilities=frozenset(),
             requires_auth=False,
             required_role=None,
         )
@@ -21,10 +49,11 @@ class MockDevicePingAdapter:
     def execute(self, payload: dict, ctx: AdapterContext) -> dict:
         target = payload.get("target") or {}
         device_id = target.get("device_id") or "unknown-device"
+
         return {
             "ok": True,
             "adapter": "mock",
-            "intent": self.intent,
+            "intent": "device.ping",
             "device_id": device_id,
             "pong": True,
         }
@@ -38,8 +67,8 @@ class MockPowerOnAdapter:
     @property
     def capabilities(self) -> AdapterCapabilities:
         return AdapterCapabilities(
-            intent=self.intent,
-            required_capabilities=[],
+            intent="power.on",
+            required_capabilities=frozenset(),
             requires_auth=False,
             required_role=None,
         )
@@ -47,10 +76,11 @@ class MockPowerOnAdapter:
     def execute(self, payload: dict, ctx: AdapterContext) -> dict:
         target = payload.get("target") or {}
         device_id = target.get("device_id") or "unknown-device"
+
         return {
             "ok": True,
             "adapter": "mock",
-            "intent": self.intent,
+            "intent": "power.on",
             "device_id": device_id,
             "state": "on",
         }
@@ -64,8 +94,8 @@ class MockPowerOffAdapter:
     @property
     def capabilities(self) -> AdapterCapabilities:
         return AdapterCapabilities(
-            intent=self.intent,
-            required_capabilities=[],
+            intent="power.off",
+            required_capabilities=frozenset(),
             requires_auth=False,
             required_role=None,
         )
@@ -73,10 +103,11 @@ class MockPowerOffAdapter:
     def execute(self, payload: dict, ctx: AdapterContext) -> dict:
         target = payload.get("target") or {}
         device_id = target.get("device_id") or "unknown-device"
+
         return {
             "ok": True,
             "adapter": "mock",
-            "intent": self.intent,
+            "intent": "power.off",
             "device_id": device_id,
             "state": "off",
         }
@@ -90,8 +121,8 @@ class MockFindBeepAdapter:
     @property
     def capabilities(self) -> AdapterCapabilities:
         return AdapterCapabilities(
-            intent=self.intent,
-            required_capabilities=[],
+            intent="find.beep",
+            required_capabilities=frozenset(),
             requires_auth=False,
             required_role=None,
         )
@@ -99,12 +130,14 @@ class MockFindBeepAdapter:
     def execute(self, payload: dict, ctx: AdapterContext) -> dict:
         target = payload.get("target") or {}
         params = payload.get("params") or {}
+
         device_id = target.get("device_id") or "unknown-device"
         duration_ms = params.get("duration_ms", 1500)
+
         return {
             "ok": True,
             "adapter": "mock",
-            "intent": self.intent,
+            "intent": "find.beep",
             "device_id": device_id,
             "action": "beep",
             "duration_ms": duration_ms,

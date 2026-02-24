@@ -9,29 +9,18 @@ from kivai_sdk.adapters.builtin.lock import UnlockDoorAdapter
 from kivai_sdk.adapters.builtin.speaker import PlayMusicAdapter
 from kivai_sdk.adapters.builtin.thermostat import SetTemperatureAdapter
 
-# Mock adapters (demo-ready)
+# Mock adapters
 from kivai_sdk.adapters.mock_adapter import (
+    EchoAdapter,
     MockDevicePingAdapter,
-    MockFindBeepAdapter,
-    MockPowerOffAdapter,
     MockPowerOnAdapter,
+    MockPowerOffAdapter,
+    MockFindBeepAdapter,
 )
 
 
 class AdapterRegistry:
-    """
-    In-memory adapter registry.
-
-    Provides:
-    - register(adapter)
-    - resolve(intent)
-    - list_intents()
-
-    Compatible with runtime, CLI, and tests.
-    """
-
     def __init__(self) -> None:
-        # CLI expects this exact name
         self._by_intent: Dict[str, object] = {}
 
     def register(self, adapter: object) -> None:
@@ -46,17 +35,11 @@ class AdapterRegistry:
         self._by_intent[intent] = adapter
 
     def resolve(self, intent: Optional[str]) -> Optional[object]:
-        """
-        Resolve adapter by intent.
-
-        Required by runtime and tests.
-        """
         if not intent or not isinstance(intent, str):
             return None
 
         return self._by_intent.get(intent)
 
-    # Backwards compatibility
     def get(self, intent: str) -> Optional[object]:
         return self.resolve(intent)
 
@@ -67,10 +50,13 @@ class AdapterRegistry:
 def _build_default_registry() -> AdapterRegistry:
     reg = AdapterRegistry()
 
-    # Built-in adapters
+    # Builtins
     reg.register(SetTemperatureAdapter())
     reg.register(PlayMusicAdapter())
     reg.register(UnlockDoorAdapter())
+
+    # REQUIRED by tests
+    reg.register(EchoAdapter())
 
     # Mock adapters
     reg.register(MockDevicePingAdapter())
@@ -82,14 +68,9 @@ def _build_default_registry() -> AdapterRegistry:
 
 
 def default_registry() -> AdapterRegistry:
-    """
-    Factory function used by runtime/tests.
-    Must return fresh instance.
-    """
     return _build_default_registry()
 
 
-# Singleton instance for CLI / non-test paths
 DEFAULT_REGISTRY = _build_default_registry()
 
 
