@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, Optional
 
 from kivai_sdk.adapters.base import AdapterContext
 
@@ -21,38 +21,58 @@ from kivai_sdk.adapters.mock_adapter import (
 class AdapterRegistry:
     """
     In-memory adapter registry.
+
+    Provides:
+    - register(adapter)
+    - resolve(intent)
+    - list_intents()
+
+    Compatible with runtime, CLI, and tests.
     """
 
     def __init__(self) -> None:
-        self._adapters: Dict[str, object] = {}
+        # CLI expects this exact name
+        self._by_intent: Dict[str, object] = {}
 
     def register(self, adapter: object) -> None:
         intent = getattr(adapter, "intent", None)
+
         if callable(intent):
             intent = intent()
+
         if not isinstance(intent, str) or not intent.strip():
             raise ValueError("Adapter must define a non-empty .intent")
-        self._adapters[intent] = adapter
 
-    def get(self, intent: str) -> object | None:
-        return self._adapters.get(intent)
+        self._by_intent[intent] = adapter
+
+    def resolve(self, intent: Optional[str]) -> Optional[object]:
+        """
+        Resolve adapter by intent.
+
+        Required by runtime and tests.
+        """
+        if not intent or not isinstance(intent, str):
+            return None
+
+        return self._by_intent.get(intent)
+
+    # Backwards compatibility
+    def get(self, intent: str) -> Optional[object]:
+        return self.resolve(intent)
 
     def list_intents(self) -> list[str]:
-        return sorted(self._adapters.keys())
+        return sorted(self._by_intent.keys())
 
 
 def _build_default_registry() -> AdapterRegistry:
-    """
-    Build a fresh registry instance (tests expect default_registry() callable).
-    """
     reg = AdapterRegistry()
 
-    # Built-in reference adapters
+    # Built-in adapters
     reg.register(SetTemperatureAdapter())
     reg.register(PlayMusicAdapter())
     reg.register(UnlockDoorAdapter())
 
-    # Demo/mock intents so /v1/execute is exciting immediately
+    # Mock adapters
     reg.register(MockDevicePingAdapter())
     reg.register(MockPowerOnAdapter())
     reg.register(MockPowerOffAdapter())
@@ -63,13 +83,19 @@ def _build_default_registry() -> AdapterRegistry:
 
 def default_registry() -> AdapterRegistry:
     """
-    Backwards-compatible factory (callable) used across tests/runtime.
-    Returns a registry pre-loaded with builtin + mock adapters.
+    Factory function used by runtime/tests.
+    Must return fresh instance.
     """
     return _build_default_registry()
 
 
-# Optional: a single prebuilt instance for non-test code paths.
+# Singleton instance for CLI / non-test paths
 DEFAULT_REGISTRY = _build_default_registry()
 
-__all__ = ["AdapterRegistry", "AdapterContext", "default_registry", "DEFAULT_REGISTRY"]
+
+__all__ = [
+    "AdapterRegistry",
+    "AdapterContext",
+    "default_registry",
+    "DEFAULT_REGISTRY",
+]
