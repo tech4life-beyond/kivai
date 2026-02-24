@@ -23,12 +23,10 @@ class EchoAdapter:
         params = payload.get("params") or {}
         message = params.get("message")
 
+        # CRITICAL: tests expect key "echo"
         return {
             "ok": True,
-            "adapter": "mock",
-            "intent": "echo",
-            "message": message,
-            "gateway_id": ctx.gateway_id,
+            "echo": message,
         }
 
 

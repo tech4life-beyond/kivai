@@ -23,7 +23,7 @@ class UnlockDoorAdapter:
         # Locks are sensitive; require auth baseline.
         return AdapterCapabilities(
             intent=self.intent,
-            required_capabilities=["lock_control"],
+            required_capabilities=frozenset({"lock_control"}),
             requires_auth=True,
             required_role="owner",
         )
