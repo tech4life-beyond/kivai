@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "KivaiCommand",
+  "type": "object",
+  "required": ["command", "object", "trigger"],
+  "properties": {
+    "command": {
+      "type": "string",
+      "description": "Legacy command verb."
+    },
+    "object": {
+      "type": "string",
+      "description": "Legacy target object name."
+    },
+    "trigger": {
+      "type": "string",
+      "description": "Legacy trigger type (e.g., voice, schedule)."
+    },
+    "params": {
+      "type": "object",
+      "description": "Legacy parameters for the command.",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}
