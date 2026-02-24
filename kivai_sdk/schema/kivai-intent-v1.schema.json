@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/tech4life-beyond/kivai/blob/main/schema/kivai-intent-v1.schema.json",
+  "title": "KivaiIntentV1",
+  "description": "Kivai v1.0 canonical intent payload schema (gateway/hub orchestrated).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["intent_id", "intent", "target", "meta"],
+  "properties": {
+    "intent_id": {
+      "type": "string",
+      "description": "Unique identifier for the intent (used for tracking and correlation).",
+      "minLength": 8
+    },
+    "intent": {
+      "type": "string",
+      "description": "Canonical action identifier (e.g., close, lock, set_temperature, locate).",
+      "minLength": 1
+    },
+    "target": {
+      "type": "object",
+      "description": "Defines routing and selection of the execution endpoint.",
+      "additionalProperties": false,
+      "properties": {
+        "device_id": {
+          "type": "string",
+          "description": "Direct identifier for a specific device endpoint.",
+          "minLength": 1
+        },
+        "capability": {
+          "type": "string",
+          "description": "Capability category used for capability+zone targeting (fallback).",
+          "minLength": 1
+        },
+        "zone": {
+          "type": "string",
+          "description": "Zone/location used for capability+zone targeting (fallback).",
+          "minLength": 1
+        }
+      },
+      "anyOf": [
+        { "required": ["device_id"] },
+        { "required": ["capability", "zone"] }
+      ]
+    },
+    "params": {
+      "type": "object",
+      "description": "Intent-specific parameters.",
+      "additionalProperties": true
+    },
+    "auth": {
+      "type": "object",
+      "description": "Authorization proof and required role. Required for sensitive intents.",
+      "additionalProperties": false,
+      "required": ["required_role", "token"],
+      "properties": {
+        "required_role": {
+          "type": "string",
+          "description": "Role required to authorize execution (e.g., owner).",
+          "minLength": 1
+        },
+        "token": {
+          "type": "string",
+          "description": "Signed session token or equivalent authorization proof.",
+          "minLength": 1
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "description": "Metadata for observability and auditing.",
+      "additionalProperties": false,
+      "required": ["timestamp", "language", "confidence"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when the intent was created."
+        },
+        "language": {
+          "type": "string",
+          "description": "Language of the original user input (e.g., en, es).",
+          "minLength": 2
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence score from the intent generation layer (0..1)."
+        },
+        "source": {
+          "type": "string",
+          "description": "Origin of the intent (e.g., gateway, assistant)."
+        },
+        "trigger": {
+          "type": "string",
+          "description": "Optional trigger word used by voice parsing layers (e.g., Kivai)."
+        },
+        "user_id": {
+          "type": "string",
+          "description": "Optional privacy-sensitive user identifier."
+        }
+      }
+    }
+  }
+}
