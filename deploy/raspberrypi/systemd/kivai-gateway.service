@@ -1,0 +1,17 @@
+[Unit]
+Description=KIVAI Gateway (FastAPI/Uvicorn)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kivai
+WorkingDirectory=/opt/kivai
+Environment="PATH=/opt/kivai/venv/bin"
+ExecStart=/opt/kivai/venv/bin/python -m uvicorn kivai_sdk.gateway:app --host 0.0.0.0 --port 8787
+Restart=on-failure
+RestartSec=2
+TimeoutStartSec=30
+
+[Install]
+WantedBy=multi-user.target

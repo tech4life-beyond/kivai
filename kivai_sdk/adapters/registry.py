@@ -1,75 +1,66 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Iterable
+from typing import Optional
 
-from kivai_sdk.adapters.builtin import (
-    PlayMusicAdapter,
-    SetTemperatureAdapter,
-    UnlockDoorAdapter,
+from kivai_sdk.adapters.base import KivaiAdapter
+
+# Built-in reference adapters
+from kivai_sdk.adapters.builtin.lock import DoorLockAdapter
+from kivai_sdk.adapters.builtin.speaker import PlayMusicAdapter
+from kivai_sdk.adapters.builtin.thermostat import SetTemperatureAdapter
+from kivai_sdk.adapters.builtin.vision import DetectObjectsAdapter
+
+# Demo/mock adapters (software-only)
+from kivai_sdk.adapters.mock_adapter import (
+    MockDevicePingAdapter,
+    MockPowerOnAdapter,
+    MockPowerOffAdapter,
+    MockFindBeepAdapter,
 )
-
-from .base import AdapterContext, KivaiAdapter
-from .capabilities import AdapterCapabilities
 
 
 @dataclass
+class AdapterRegistration:
+    intent: str
+    adapter: KivaiAdapter
+
+
 class AdapterRegistry:
     """
-    Simple in-process registry.
-
-    Future: dynamic discovery, versioning, capability matching, remote adapters.
+    Registry maps `intent` -> adapter that can execute that intent.
     """
 
-    _by_intent: Dict[str, KivaiAdapter]
-
-    @classmethod
-    def empty(cls) -> "AdapterRegistry":
-        return cls(_by_intent={})
+    def __init__(self) -> None:
+        self._adapters: dict[str, AdapterRegistration] = {}
 
     def register(self, adapter: KivaiAdapter) -> None:
-        self._by_intent[adapter.intent] = adapter
+        intent = getattr(adapter, "intent", None)
+        if not isinstance(intent, str) or not intent.strip():
+            raise ValueError("Adapter must define non-empty .intent string")
+        self._adapters[intent] = AdapterRegistration(intent=intent, adapter=adapter)
 
-    def register_many(self, adapters: Iterable[KivaiAdapter]) -> None:
-        for a in adapters:
-            self.register(a)
-
-    def resolve(self, intent: str | None) -> KivaiAdapter | None:
+    def resolve(self, intent: str | None) -> Optional[KivaiAdapter]:
         if not intent:
             return None
-        return self._by_intent.get(intent)
+        reg = self._adapters.get(intent)
+        return reg.adapter if reg else None
+
+    def list_intents(self) -> list[str]:
+        return sorted(self._adapters.keys())
 
 
-class EchoAdapter:
-    """
-    Reference adapter: echo (local, deterministic).
-    Kept outside schema by design, but still must declare capabilities in v0.9 strict.
-    """
+# Canonical default registry (ships with built-ins + demo mocks)
+default_registry = AdapterRegistry()
 
-    intent = "echo"
+# Built-ins (examples)
+default_registry.register(DoorLockAdapter())
+default_registry.register(PlayMusicAdapter())
+default_registry.register(SetTemperatureAdapter())
+default_registry.register(DetectObjectsAdapter())
 
-    @property
-    def capabilities(self) -> AdapterCapabilities:
-        return AdapterCapabilities(
-            intent="echo",
-            required_capabilities=frozenset(),
-            requires_auth=False,
-            required_role=None,
-            timeout_ms=1000,
-        )
-
-    def execute(self, payload: dict, ctx: AdapterContext) -> dict:
-        params = (
-            payload.get("params") if isinstance(payload.get("params"), dict) else {}
-        )
-        msg = params.get("message", "")
-        return {"echo": msg, "gateway_id": ctx.gateway_id}
-
-
-def default_registry() -> AdapterRegistry:
-    reg = AdapterRegistry.empty()
-    reg.register(EchoAdapter())
-    reg.register(SetTemperatureAdapter())
-    reg.register(PlayMusicAdapter())
-    reg.register(UnlockDoorAdapter())
-    return reg
+# Mocks (demo-ready immediately)
+default_registry.register(MockDevicePingAdapter())
+default_registry.register(MockPowerOnAdapter())
+default_registry.register(MockPowerOffAdapter())
+default_registry.register(MockFindBeepAdapter())
